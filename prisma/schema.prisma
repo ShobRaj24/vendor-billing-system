@@ -1,0 +1,49 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "sqlite"
+}
+
+model Product {
+  id           Int      @id @default(autoincrement())
+  name         String
+  sku          String?  @unique
+  barcode      String?  @unique
+  category     String?
+  unit         String   @default("Piece")
+  mrp          Decimal?
+  sellingPrice Decimal
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  invoiceItems InvoiceItem[]
+}
+
+model Invoice {
+  id                 Int           @id @default(autoincrement())
+  invoiceNumber      String        @unique
+  totalMrp           Decimal
+  productDiscount    Decimal
+  additionalDiscount Decimal
+  finalAmount        Decimal
+  createdAt          DateTime      @default(now())
+
+  items              InvoiceItem[]
+}
+
+model InvoiceItem {
+  id             Int      @id @default(autoincrement())
+  invoiceId      Int
+  productId      Int
+
+  productName    String
+  unit           String
+  quantity       Decimal
+  mrp            Decimal?
+  sellingPrice   Decimal
+  lineTotal      Decimal
+
+  invoice        Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  product        Product  @relation(fields: [productId], references: [id])
+}
