@@ -78,6 +78,33 @@ app.on("window-all-closed", () => {
   }
 });
 
+ipcMain.handle("products:update", async (_event, product) => {
+  console.log("PRODUCT UPDATE IPC RECEIVED:", product);
+
+  const updatedProduct = await prisma.product.update({
+    where: {
+      id: product.id,
+    },
+    data: {
+      name: product.name,
+      sku: product.sku || null,
+      barcode: product.barcode || null,
+      category: product.category || null,
+      unit: product.unit || "Piece",
+      mrp: product.mrp === "" || product.mrp == null ? null : product.mrp,
+      sellingPrice: product.sellingPrice,
+    },
+  });
+
+  console.log("PRODUCT UPDATED IN PRISMA:", updatedProduct);
+
+  return {
+    ...updatedProduct,
+    mrp: updatedProduct.mrp === null ? null : Number(updatedProduct.mrp),
+    sellingPrice: Number(updatedProduct.sellingPrice),
+  };
+});
+
 ipcMain.handle("invoices:create", async (_event, invoice) => {
   console.log("INVOICE CREATE IPC RECEIVED:", invoice);
 

@@ -1,4 +1,17 @@
-function ProductManagement({ products, onEdit, onDelete, onAdd }) {
+import AddProductForm from "./AddProductForm";
+
+function ProductManagement({
+  products,
+  onEdit,
+  onDelete,
+  onAdd,
+  editingProduct,
+  newProduct,
+  updateNewProduct,
+  updateProduct,
+  productSaved,
+  onCancelEdit,
+}) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <header className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
@@ -14,6 +27,20 @@ function ProductManagement({ products, onEdit, onDelete, onAdd }) {
           + Add Product
         </button>
       </header>
+
+      {editingProduct && (
+        <div className="px-6 pt-6">
+          <AddProductForm
+            newProduct={newProduct}
+            updateNewProduct={updateNewProduct}
+            saveProduct={() => {}}
+            updateProduct={updateProduct}
+            productSaved={productSaved}
+            onCancel={onCancelEdit}
+            editMode={true}
+          />
+        </div>
+      )}
 
       <div className="flex-1 overflow-auto p-6">
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
@@ -54,7 +81,10 @@ function ProductManagement({ products, onEdit, onDelete, onAdd }) {
 
                   <td className="px-4 py-3 text-right">
                     <button
-                      onClick={() => onEdit(product)}
+                      onClick={() => {
+                        console.log("EDIT CLICKED:", product);
+                        onEdit(product);
+                      }}
                       className="mr-2 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium hover:bg-slate-50"
                     >
                       Edit

@@ -2,12 +2,16 @@ function AddProductForm({
   newProduct,
   updateNewProduct,
   saveProduct,
+  updateProduct,
   productSaved,
   onCancel,
+  editMode = false,
 }) {
   return (
     <div className="mt-4 rounded-xl border border-slate-200 bg-white p-5">
-      <h2 className="mb-4 text-lg font-semibold">Add Product</h2>
+      <h2 className="mb-4 text-lg font-semibold">
+        {editMode ? "Edit Product" : "Add Product"}
+      </h2>
 
       {productSaved && (
         <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
@@ -79,10 +83,10 @@ function AddProductForm({
 
       <div className="mt-4 flex gap-2">
         <button
-          onClick={saveProduct}
+          onClick={editMode ? updateProduct : saveProduct}
           className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white"
         >
-          Save Product
+          {editMode ? "Update Product" : "Save Product"}
         </button>
 
         <button

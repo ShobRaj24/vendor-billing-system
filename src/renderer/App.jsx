@@ -27,6 +27,7 @@ function App() {
   const [products, setProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [showAddProduct, setShowAddProduct] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
   const [productSaved, setProductSaved] = useState(false);
   const [newProduct, setNewProduct] = useState({
     name: "",
@@ -90,7 +91,76 @@ function App() {
       alert(`Could not save product.\n\n${error?.message || error}`);
     }
   }
+  async function updateProduct() {
+    console.log("UPDATE PRODUCT CLICKED");
 
+    if (!editingProduct) {
+      return;
+    }
+
+    if (!newProduct.name.trim()) {
+      alert("Product name is required.");
+      return;
+    }
+
+    if (newProduct.sellingPrice === "" || Number(newProduct.sellingPrice) < 0) {
+      alert("Selling price is required.");
+      return;
+    }
+
+    try {
+      const updatedProduct = await window.api.products.update({
+        id: editingProduct.id,
+        ...newProduct,
+        sellingPrice: Number(newProduct.sellingPrice),
+        mrp: newProduct.mrp === "" ? null : Number(newProduct.mrp),
+      });
+
+      console.log("PRODUCT UPDATED:", updatedProduct);
+
+      setProducts((currentProducts) =>
+        currentProducts.map((product) =>
+          product.id === updatedProduct.id ? updatedProduct : product,
+        ),
+      );
+
+      setEditingProduct(null);
+      setShowAddProduct(false);
+
+      setNewProduct({
+        name: "",
+        sku: "",
+        barcode: "",
+        category: "",
+        unit: "Piece",
+        mrp: "",
+        sellingPrice: "",
+      });
+
+      setProductSaved(true);
+
+      setTimeout(() => {
+        setProductSaved(false);
+      }, 3000);
+    } catch (error) {
+      console.error("Failed to update product:", error);
+      alert(`Could not update product.\n\n${error?.message || error}`);
+    }
+  }
+  function startEditProduct(product) {
+    setEditingProduct(product);
+
+    setNewProduct({
+      name: product.name || "",
+      sku: product.sku || "",
+      barcode: product.barcode || "",
+      category: product.category || "",
+      unit: product.unit || "Piece",
+      mrp: product.mrp == null ? "" : String(product.mrp),
+      sellingPrice:
+        product.sellingPrice == null ? "" : String(product.sellingPrice),
+    });
+  }
   useEffect(() => {
     async function loadProducts() {
       console.log("LOAD PRODUCTS STARTED");
@@ -194,8 +264,25 @@ function App() {
           <ProductManagement
             products={products}
             onAdd={() => setShowAddProduct(true)}
-            onEdit={(product) => console.log("EDIT PRODUCT:", product)}
+            onEdit={startEditProduct}
             onDelete={(product) => console.log("DELETE PRODUCT:", product)}
+            editingProduct={editingProduct}
+            newProduct={newProduct}
+            updateNewProduct={updateNewProduct}
+            updateProduct={updateProduct}
+            productSaved={productSaved}
+            onCancelEdit={() => {
+              setEditingProduct(null);
+              setNewProduct({
+                name: "",
+                sku: "",
+                barcode: "",
+                category: "",
+                unit: "Piece",
+                mrp: "",
+                sellingPrice: "",
+              });
+            }}
           />
         ) : (
           <>
@@ -220,8 +307,10 @@ function App() {
                 newProduct={newProduct}
                 updateNewProduct={updateNewProduct}
                 saveProduct={saveProduct}
+                updateProduct={updateProduct}
                 productSaved={productSaved}
                 onCancel={() => setShowAddProduct(false)}
+                editMode={editingProduct !== null}
               />
             )}
             <div className="flex min-h-0 flex-1 gap-4 p-4">
