@@ -1,12 +1,12 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 
-const adapter = new PrismaBetterSqlite3({
-  url: "file:./dev.db",
-});
+export function createPrismaClient(databasePath) {
+  const adapter = new PrismaBetterSqlite3({
+    url: `file:${databasePath.replaceAll("\\", "/")}`,
+  });
 
-const prisma = new PrismaClient({
-  adapter,
-});
-
-export default prisma;
+  return new PrismaClient({
+    adapter,
+  });
+}

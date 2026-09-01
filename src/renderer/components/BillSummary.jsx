@@ -4,6 +4,8 @@ function BillSummary({
   productDiscount,
   additionalDiscount,
   setAdditionalDiscount,
+  saveError,
+  onDismissSaveError,
   onSaveBill,
 }) {
   const finalAmount = subtotal - Number(additionalDiscount || 0);
@@ -52,6 +54,22 @@ function BillSummary({
           Save Bill
         </button>
       </div>
+
+      {saveError && (
+        <div
+          role="alert"
+          className="mt-3 flex items-start justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+        >
+          <span>{saveError}</span>
+          <button
+            onClick={onDismissSaveError}
+            aria-label="Dismiss error"
+            className="text-base leading-none text-red-700 hover:text-red-900"
+          >
+            ×
+          </button>
+        </div>
+      )}
     </div>
   );
 }

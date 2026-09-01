@@ -48,7 +48,11 @@ export function useBilling() {
   function updateQuantity(productId, quantity) {
     const numericQuantity = Number(quantity);
 
-    if (Number.isNaN(numericQuantity) || numericQuantity < 0) {
+    if (quantity === "" || Number.isNaN(numericQuantity) || numericQuantity < 0) {
+      return;
+    }
+
+    if (numericQuantity === 0) {
       return;
     }
 
@@ -77,9 +81,18 @@ export function useBilling() {
   }
 
   function updatePrice(productId, field, value) {
+    if (field === "mrp" && (value === "" || value === null)) {
+      setBillItems((items) =>
+        items.map((item) =>
+          item.productId === productId ? { ...item, mrp: null } : item,
+        ),
+      );
+      return;
+    }
+
     const numericValue = Number(value);
 
-    if (Number.isNaN(numericValue) || numericValue < 0) {
+    if (value === "" || Number.isNaN(numericValue) || numericValue < 0) {
       return;
     }
 
@@ -116,14 +129,29 @@ export function useBilling() {
   const productDiscount = useMemo(() => {
     return totalMrp - subtotal;
   }, [totalMrp, subtotal]);
+
   async function saveBill() {
-    const finalAmount = Math.max(0, subtotal - Number(additionalDiscount || 0));
+    if (billItems.length === 0) {
+      throw new Error("Add at least one product before saving the bill.");
+    }
+
+    const discount = Number(additionalDiscount || 0);
+
+    if (!Number.isFinite(discount) || discount < 0) {
+      throw new Error("Additional discount must be a valid non-negative amount.");
+    }
+
+    if (discount > subtotal) {
+      throw new Error("Additional discount cannot exceed the subtotal.");
+    }
+
+    const finalAmount = subtotal - discount;
 
     const invoice = {
       invoiceNumber: `INV-${Date.now()}`,
       totalMrp,
       productDiscount,
-      additionalDiscount: Number(additionalDiscount || 0),
+      additionalDiscount: discount,
       finalAmount,
 
       items: billItems.map((item) => ({

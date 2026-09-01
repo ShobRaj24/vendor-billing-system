@@ -1,6 +1,107 @@
+import { useState } from "react";
+
 function BillItems({ billItems, updatePrice, updateQuantity, removeItem }) {
+  const [itemPendingRemoval, setItemPendingRemoval] = useState(null);
+  const [quantityDrafts, setQuantityDrafts] = useState({});
+  const [priceDrafts, setPriceDrafts] = useState({});
+
+  function clearQuantityDraft(productId) {
+    setQuantityDrafts((current) => {
+      const { [productId]: _draft, ...remainingDrafts } = current;
+      return remainingDrafts;
+    });
+  }
+
+  function handleQuantityChange(item, value) {
+    const quantity = Number(value);
+
+    setQuantityDrafts((current) => ({
+      ...current,
+      [item.productId]: value,
+    }));
+
+    if (value !== "" && Number.isFinite(quantity) && quantity === 0) {
+      setItemPendingRemoval(item);
+      return;
+    }
+
+    if (value !== "") {
+      setItemPendingRemoval(null);
+      updateQuantity(item.productId, value);
+    }
+  }
+
+  function getPriceDraftKey(productId, field) {
+    return `${productId}:${field}`;
+  }
+
+  function clearPriceDraft(productId, field) {
+    const draftKey = getPriceDraftKey(productId, field);
+
+    setPriceDrafts((current) => {
+      const { [draftKey]: _draft, ...remainingDrafts } = current;
+      return remainingDrafts;
+    });
+  }
+
+  function handlePriceChange(item, field, value) {
+    const numericValue = Number(value);
+    const draftKey = getPriceDraftKey(item.productId, field);
+
+    setPriceDrafts((current) => ({
+      ...current,
+      [draftKey]: value,
+    }));
+
+    if (field === "mrp" && value === "") {
+      updatePrice(item.productId, field, null);
+      return;
+    }
+
+    if (value !== "" && Number.isFinite(numericValue) && numericValue >= 0) {
+      updatePrice(item.productId, field, value);
+    }
+  }
+
   return (
     <div className="flex-1 overflow-auto p-4">
+      {itemPendingRemoval && (
+        <div
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="remove-item-title"
+          className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"
+        >
+          <p id="remove-item-title" className="font-medium">
+            Remove {itemPendingRemoval.name} from this bill?
+          </p>
+          <p className="mt-1 text-amber-800">
+            Keep it if you want to enter a different quantity.
+          </p>
+          <div className="mt-3 flex gap-2">
+            <button
+              onClick={() => {
+                clearQuantityDraft(itemPendingRemoval.productId);
+                setItemPendingRemoval(null);
+              }}
+              className="rounded-lg border border-amber-300 px-3 py-2 text-sm font-medium hover:bg-amber-100"
+            >
+              Keep Product
+            </button>
+            <button
+              onClick={() => {
+                removeItem(itemPendingRemoval.productId);
+                clearQuantityDraft(itemPendingRemoval.productId);
+                setItemPendingRemoval(null);
+              }}
+              className="rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700"
+            >
+              Remove Product
+            </button>
+          </div>
+        </div>
+      )}
+
       {billItems.length === 0 ? (
         <div className="rounded-lg border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">
           No products added yet.
@@ -26,10 +127,15 @@ function BillItems({ billItems, updatePrice, updateQuantity, removeItem }) {
                         type="number"
                         min="0"
                         step="0.01"
-                        value={item.mrp ?? ""}
-                        onChange={(event) =>
-                          updatePrice(item.productId, "mrp", event.target.value)
+                        value={
+                          priceDrafts[getPriceDraftKey(item.productId, "mrp")] ??
+                          item.mrp ??
+                          ""
                         }
+                        onChange={(event) =>
+                          handlePriceChange(item, "mrp", event.target.value)
+                        }
+                        onBlur={() => clearPriceDraft(item.productId, "mrp")}
                         placeholder="Optional"
                         className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-slate-500"
                       />
@@ -44,13 +150,20 @@ function BillItems({ billItems, updatePrice, updateQuantity, removeItem }) {
                         type="number"
                         min="0"
                         step="0.01"
-                        value={item.sellingPrice}
+                        value={
+                          priceDrafts[
+                            getPriceDraftKey(item.productId, "sellingPrice")
+                          ] ?? item.sellingPrice
+                        }
                         onChange={(event) =>
-                          updatePrice(
-                            item.productId,
+                          handlePriceChange(
+                            item,
                             "sellingPrice",
                             event.target.value,
                           )
+                        }
+                        onBlur={() =>
+                          clearPriceDraft(item.productId, "sellingPrice")
                         }
                         className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-slate-500"
                       />
@@ -73,10 +186,9 @@ function BillItems({ billItems, updatePrice, updateQuantity, removeItem }) {
                   step={
                     item.unit === "Piece" || item.unit === "Pack" ? "1" : "0.5"
                   }
-                  value={item.quantity}
-                  onChange={(event) =>
-                    updateQuantity(item.productId, event.target.value)
-                  }
+                  value={quantityDrafts[item.productId] ?? item.quantity}
+                  onChange={(event) => handleQuantityChange(item, event.target.value)}
+                  onBlur={() => clearQuantityDraft(item.productId)}
                   className="w-24 rounded-lg border border-slate-300 px-3 py-2"
                 />
 

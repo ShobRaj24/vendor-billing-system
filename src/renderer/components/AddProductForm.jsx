@@ -4,6 +4,8 @@ function AddProductForm({
   saveProduct,
   updateProduct,
   productSaved,
+  errorMessage,
+  onDismissError,
   onCancel,
   editMode = false,
 }) {
@@ -16,6 +18,22 @@ function AddProductForm({
       {productSaved && (
         <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
           Product saved successfully.
+        </div>
+      )}
+
+      {errorMessage && (
+        <div
+          role="alert"
+          className="mb-4 flex items-start justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+        >
+          <span>{errorMessage}</span>
+          <button
+            onClick={onDismissError}
+            aria-label="Dismiss error"
+            className="text-base leading-none text-red-700 hover:text-red-900"
+          >
+            ×
+          </button>
         </div>
       )}
 

@@ -27,8 +27,9 @@ function App() {
   const [products, setProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [showAddProduct, setShowAddProduct] = useState(false);
-  const [editingProduct, setEditingProduct] = useState(null);
+  const [billSaveError, setBillSaveError] = useState("");
   const [productSaved, setProductSaved] = useState(false);
+  const [productSaveError, setProductSaveError] = useState("");
   const [newProduct, setNewProduct] = useState({
     name: "",
     sku: "",
@@ -44,6 +45,7 @@ function App() {
   const [currentPage, setCurrentPage] = useState("billing");
 
   function updateNewProduct(field, value) {
+    setProductSaveError("");
     setNewProduct((current) => ({
       ...current,
       [field]: value,
@@ -53,12 +55,12 @@ function App() {
   async function saveProduct() {
     console.log("SAVE PRODUCT CLICKED");
     if (!newProduct.name.trim()) {
-      alert("Product name is required.");
+      setProductSaveError("Product name is required.");
       return;
     }
 
     if (newProduct.sellingPrice === "" || Number(newProduct.sellingPrice) < 0) {
-      alert("Selling price is required.");
+      setProductSaveError("Selling price is required.");
       return;
     }
 
@@ -70,6 +72,7 @@ function App() {
       });
       console.log("PRODUCT CREATED:", savedProduct);
       setProducts((currentProducts) => [savedProduct, ...currentProducts]);
+      setProductSaveError("");
 
       setNewProduct({
         name: "",
@@ -88,7 +91,7 @@ function App() {
       }, 3000);
     } catch (error) {
       console.error("Failed to save product:", error);
-      alert(`Could not save product.\n\n${error?.message || error}`);
+      setProductSaveError(error?.message || String(error));
     }
   }
 
@@ -122,75 +125,19 @@ function App() {
     }
   }
 
-  async function updateProduct() {
-    console.log("UPDATE PRODUCT CLICKED");
-
-    if (!editingProduct) {
-      return;
-    }
-
-    if (!newProduct.name.trim()) {
-      alert("Product name is required.");
-      return;
-    }
-
-    if (newProduct.sellingPrice === "" || Number(newProduct.sellingPrice) < 0) {
-      alert("Selling price is required.");
-      return;
-    }
-
-    try {
-      const updatedProduct = await window.api.products.update({
-        id: editingProduct.id,
-        ...newProduct,
-        sellingPrice: Number(newProduct.sellingPrice),
-        mrp: newProduct.mrp === "" ? null : Number(newProduct.mrp),
-      });
-
-      console.log("PRODUCT UPDATED:", updatedProduct);
-
-      setProducts((currentProducts) =>
-        currentProducts.map((product) =>
-          product.id === updatedProduct.id ? updatedProduct : product,
-        ),
-      );
-
-      setEditingProduct(null);
-      setShowAddProduct(false);
-
-      setNewProduct({
-        name: "",
-        sku: "",
-        barcode: "",
-        category: "",
-        unit: "Piece",
-        mrp: "",
-        sellingPrice: "",
-      });
-
-      setProductSaved(true);
-
-      setTimeout(() => {
-        setProductSaved(false);
-      }, 3000);
-    } catch (error) {
-      console.error("Failed to update product:", error);
-      alert(`Could not update product.\n\n${error?.message || error}`);
-    }
-  }
-  function startEditProduct(product) {
-    setEditingProduct(product);
-
-    setNewProduct({
-      name: product.name || "",
-      sku: product.sku || "",
-      barcode: product.barcode || "",
-      category: product.category || "",
-      unit: product.unit || "Piece",
-      mrp: product.mrp == null ? "" : String(product.mrp),
-      sellingPrice:
-        product.sellingPrice == null ? "" : String(product.sellingPrice),
+  async function updateProductFromProductsPage(productId, product) {
+    const updatedProduct = await window.api.products.update({
+      id: productId,
+      ...product,
+      sellingPrice: Number(product.sellingPrice),
+      mrp: product.mrp === "" ? null : Number(product.mrp),
     });
+
+    setProducts((currentProducts) =>
+      currentProducts.map((currentProduct) =>
+        currentProduct.id === updatedProduct.id ? updatedProduct : currentProduct,
+      ),
+    );
   }
   useEffect(() => {
     async function loadProducts() {
@@ -295,25 +242,8 @@ function App() {
           <ProductManagement
             products={products}
             onCreateProduct={createProductFromProductsPage}
-            onEdit={startEditProduct}
+            onUpdateProduct={updateProductFromProductsPage}
             onDelete={deleteProduct}
-            editingProduct={editingProduct}
-            newProduct={newProduct}
-            updateNewProduct={updateNewProduct}
-            updateProduct={updateProduct}
-            productSaved={productSaved}
-            onCancelEdit={() => {
-              setEditingProduct(null);
-              setNewProduct({
-                name: "",
-                sku: "",
-                barcode: "",
-                category: "",
-                unit: "Piece",
-                mrp: "",
-                sellingPrice: "",
-              });
-            }}
           />
         ) : (
           <>
@@ -338,10 +268,11 @@ function App() {
                 newProduct={newProduct}
                 updateNewProduct={updateNewProduct}
                 saveProduct={saveProduct}
-                updateProduct={updateProduct}
                 productSaved={productSaved}
+                errorMessage={productSaveError}
+                onDismissError={() => setProductSaveError("")}
                 onCancel={() => setShowAddProduct(false)}
-                editMode={editingProduct !== null}
+                editMode={false}
               />
             )}
             <div className="flex min-h-0 flex-1 gap-4 p-4">
@@ -389,16 +320,21 @@ function App() {
                   productDiscount={productDiscount}
                   additionalDiscount={additionalDiscount}
                   setAdditionalDiscount={setAdditionalDiscount}
+                  saveError={billSaveError}
+                  onDismissSaveError={() => setBillSaveError("")}
                   onSaveBill={async () => {
                     try {
                       const invoice = await saveBill();
+                      setBillSaveError("");
                       setSavedInvoice(invoice);
                       setInvoicePreviewSource("billing");
                     } catch (error) {
                       console.error("Failed to save bill:", error);
-                      alert(
-                        `Could not save bill.\n\n${error?.message || error}`,
-                      );
+                      setBillSaveError(error?.message || String(error));
+
+                      setTimeout(() => {
+                        setBillSaveError("");
+                      }, 5000);
                     }
                   }}
                 />

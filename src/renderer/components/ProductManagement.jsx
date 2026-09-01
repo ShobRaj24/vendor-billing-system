@@ -13,21 +13,21 @@ const emptyProduct = {
 
 function ProductManagement({
   products,
-  onEdit,
   onDelete,
   onCreateProduct,
-  editingProduct,
-  newProduct,
-  updateNewProduct,
-  updateProduct,
-  productSaved,
-  onCancelEdit,
+  onUpdateProduct,
 }) {
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [newProductDraft, setNewProductDraft] = useState(emptyProduct);
   const [productCreated, setProductCreated] = useState(false);
+  const [newProductError, setNewProductError] = useState("");
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [editProductDraft, setEditProductDraft] = useState(emptyProduct);
+  const [productUpdated, setProductUpdated] = useState(false);
+  const [editProductError, setEditProductError] = useState("");
 
   function updateNewProductDraft(field, value) {
+    setNewProductError("");
     setNewProductDraft((current) => ({
       ...current,
       [field]: value,
@@ -36,7 +36,7 @@ function ProductManagement({
 
   async function saveNewProduct() {
     if (!newProductDraft.name.trim()) {
-      alert("Product name is required.");
+      setNewProductError("Product name is required.");
       return;
     }
 
@@ -44,13 +44,14 @@ function ProductManagement({
       newProductDraft.sellingPrice === "" ||
       Number(newProductDraft.sellingPrice) < 0
     ) {
-      alert("Selling price is required.");
+      setNewProductError("Selling price is required.");
       return;
     }
 
     try {
       await onCreateProduct(newProductDraft);
       setNewProductDraft(emptyProduct);
+      setNewProductError("");
       setProductCreated(true);
 
       setTimeout(() => {
@@ -58,7 +59,65 @@ function ProductManagement({
       }, 3000);
     } catch (error) {
       console.error("Failed to save product:", error);
-      alert(`Could not save product.\n\n${error?.message || error}`);
+      setNewProductError(error?.message || String(error));
+    }
+  }
+
+  function startEditProduct(product) {
+    setShowAddProduct(false);
+    setEditProductError("");
+    setEditingProduct(product);
+    setEditProductDraft({
+      name: product.name || "",
+      sku: product.sku || "",
+      barcode: product.barcode || "",
+      category: product.category || "",
+      unit: product.unit || "Piece",
+      mrp: product.mrp == null ? "" : String(product.mrp),
+      sellingPrice:
+        product.sellingPrice == null ? "" : String(product.sellingPrice),
+    });
+  }
+
+  function updateEditProductDraft(field, value) {
+    setEditProductError("");
+    setEditProductDraft((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  }
+
+  async function saveProductUpdate() {
+    if (!editingProduct) {
+      return;
+    }
+
+    if (!editProductDraft.name.trim()) {
+      setEditProductError("Product name is required.");
+      return;
+    }
+
+    if (
+      editProductDraft.sellingPrice === "" ||
+      Number(editProductDraft.sellingPrice) < 0
+    ) {
+      setEditProductError("Selling price is required.");
+      return;
+    }
+
+    try {
+      await onUpdateProduct(editingProduct.id, editProductDraft);
+      setEditingProduct(null);
+      setEditProductDraft(emptyProduct);
+      setEditProductError("");
+      setProductUpdated(true);
+
+      setTimeout(() => {
+        setProductUpdated(false);
+      }, 3000);
+    } catch (error) {
+      console.error("Failed to update product:", error);
+      setEditProductError(error?.message || String(error));
     }
   }
 
@@ -86,7 +145,12 @@ function ProductManagement({
             saveProduct={saveNewProduct}
             updateProduct={() => {}}
             productSaved={productCreated}
-            onCancel={() => setShowAddProduct(false)}
+            errorMessage={newProductError}
+            onDismissError={() => setNewProductError("")}
+            onCancel={() => {
+              setShowAddProduct(false);
+              setNewProductError("");
+            }}
           />
         </div>
       )}
@@ -94,12 +158,18 @@ function ProductManagement({
       {editingProduct && (
         <div className="px-6 pt-6">
           <AddProductForm
-            newProduct={newProduct}
-            updateNewProduct={updateNewProduct}
+            newProduct={editProductDraft}
+            updateNewProduct={updateEditProductDraft}
             saveProduct={() => {}}
-            updateProduct={updateProduct}
-            productSaved={productSaved}
-            onCancel={onCancelEdit}
+            updateProduct={saveProductUpdate}
+            productSaved={productUpdated}
+            errorMessage={editProductError}
+            onDismissError={() => setEditProductError("")}
+            onCancel={() => {
+              setEditingProduct(null);
+              setEditProductDraft(emptyProduct);
+              setEditProductError("");
+            }}
             editMode={true}
           />
         </div>
@@ -146,7 +216,7 @@ function ProductManagement({
                     <button
                       onClick={() => {
                         console.log("EDIT CLICKED:", product);
-                        onEdit(product);
+                        startEditProduct(product);
                       }}
                       className="mr-2 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium hover:bg-slate-50"
                     >
