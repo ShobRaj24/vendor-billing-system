@@ -91,6 +91,37 @@ function App() {
       alert(`Could not save product.\n\n${error?.message || error}`);
     }
   }
+
+  async function createProductFromProductsPage(product) {
+    const savedProduct = await window.api.products.create({
+      ...product,
+      sellingPrice: Number(product.sellingPrice),
+      mrp: product.mrp === "" ? null : Number(product.mrp),
+    });
+
+    setProducts((currentProducts) => [savedProduct, ...currentProducts]);
+  }
+
+  async function deleteProduct(product) {
+    const shouldDelete = window.confirm(
+      `Remove "${product.name}" from the active products list?`,
+    );
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    try {
+      await window.api.products.deactivate(product.id);
+      setProducts((currentProducts) =>
+        currentProducts.filter((currentProduct) => currentProduct.id !== product.id),
+      );
+    } catch (error) {
+      console.error("Failed to delete product:", error);
+      alert(`Could not delete product.\n\n${error?.message || error}`);
+    }
+  }
+
   async function updateProduct() {
     console.log("UPDATE PRODUCT CLICKED");
 
@@ -263,9 +294,9 @@ function App() {
         ) : currentPage === "products" ? (
           <ProductManagement
             products={products}
-            onAdd={() => setShowAddProduct(true)}
+            onCreateProduct={createProductFromProductsPage}
             onEdit={startEditProduct}
-            onDelete={(product) => console.log("DELETE PRODUCT:", product)}
+            onDelete={deleteProduct}
             editingProduct={editingProduct}
             newProduct={newProduct}
             updateNewProduct={updateNewProduct}

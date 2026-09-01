@@ -1,10 +1,21 @@
 import AddProductForm from "./AddProductForm";
+import { useState } from "react";
+
+const emptyProduct = {
+  name: "",
+  sku: "",
+  barcode: "",
+  category: "",
+  unit: "Piece",
+  mrp: "",
+  sellingPrice: "",
+};
 
 function ProductManagement({
   products,
   onEdit,
   onDelete,
-  onAdd,
+  onCreateProduct,
   editingProduct,
   newProduct,
   updateNewProduct,
@@ -12,6 +23,45 @@ function ProductManagement({
   productSaved,
   onCancelEdit,
 }) {
+  const [showAddProduct, setShowAddProduct] = useState(false);
+  const [newProductDraft, setNewProductDraft] = useState(emptyProduct);
+  const [productCreated, setProductCreated] = useState(false);
+
+  function updateNewProductDraft(field, value) {
+    setNewProductDraft((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  }
+
+  async function saveNewProduct() {
+    if (!newProductDraft.name.trim()) {
+      alert("Product name is required.");
+      return;
+    }
+
+    if (
+      newProductDraft.sellingPrice === "" ||
+      Number(newProductDraft.sellingPrice) < 0
+    ) {
+      alert("Selling price is required.");
+      return;
+    }
+
+    try {
+      await onCreateProduct(newProductDraft);
+      setNewProductDraft(emptyProduct);
+      setProductCreated(true);
+
+      setTimeout(() => {
+        setProductCreated(false);
+      }, 3000);
+    } catch (error) {
+      console.error("Failed to save product:", error);
+      alert(`Could not save product.\n\n${error?.message || error}`);
+    }
+  }
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <header className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
@@ -21,12 +71,25 @@ function ProductManagement({
         </div>
 
         <button
-          onClick={onAdd}
+          onClick={() => setShowAddProduct(true)}
           className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
         >
           + Add Product
         </button>
       </header>
+
+      {showAddProduct && (
+        <div className="px-6 pt-6">
+          <AddProductForm
+            newProduct={newProductDraft}
+            updateNewProduct={updateNewProductDraft}
+            saveProduct={saveNewProduct}
+            updateProduct={() => {}}
+            productSaved={productCreated}
+            onCancel={() => setShowAddProduct(false)}
+          />
+        </div>
+      )}
 
       {editingProduct && (
         <div className="px-6 pt-6">

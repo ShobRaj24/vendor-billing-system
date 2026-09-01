@@ -7,6 +7,9 @@ contextBridge.exposeInMainWorld("api", {
     create: (product) => ipcRenderer.invoke("products:create", product),
 
     update: (product) => ipcRenderer.invoke("products:update", product),
+
+    deactivate: (productId) =>
+      ipcRenderer.invoke("products:deactivate", productId),
   },
   invoices: {
     create: (invoice) => ipcRenderer.invoke("invoices:create", invoice),

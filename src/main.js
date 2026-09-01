@@ -105,6 +105,19 @@ ipcMain.handle("products:update", async (_event, product) => {
   };
 });
 
+ipcMain.handle("products:deactivate", async (_event, productId) => {
+  console.log("PRODUCT DEACTIVATE IPC RECEIVED:", productId);
+
+  await prisma.product.update({
+    where: {
+      id: productId,
+    },
+    data: {
+      isActive: false,
+    },
+  });
+});
+
 ipcMain.handle("invoices:create", async (_event, invoice) => {
   console.log("INVOICE CREATE IPC RECEIVED:", invoice);
 
