@@ -7,6 +7,7 @@ import { useBilling } from "./hooks/useBilling";
 import InvoiceHistory from "./components/InvoiceHistory";
 import InvoicePreview from "./components/InvoicePreview";
 import ProductManagement from "./components/ProductManagement";
+import ReportsPage from "./components/ReportsPage";
 
 function App() {
   const [search, setSearch] = useState("");
@@ -25,7 +26,6 @@ function App() {
     billSaved,
   } = useBilling();
   const [products, setProducts] = useState([]);
-  const [loadingProducts, setLoadingProducts] = useState(true);
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [billSaveError, setBillSaveError] = useState("");
   const [productSaved, setProductSaved] = useState(false);
@@ -39,7 +39,6 @@ function App() {
     mrp: "",
     sellingPrice: "",
   });
-  const [invoiceFormat, setInvoiceFormat] = useState("A4");
   const [savedInvoice, setSavedInvoice] = useState(null);
   const [invoicePreviewSource, setInvoicePreviewSource] = useState(null);
   const [currentPage, setCurrentPage] = useState("billing");
@@ -53,7 +52,6 @@ function App() {
   }
 
   async function saveProduct() {
-    console.log("SAVE PRODUCT CLICKED");
     if (!newProduct.name.trim()) {
       setProductSaveError("Product name is required.");
       return;
@@ -70,7 +68,6 @@ function App() {
         sellingPrice: Number(newProduct.sellingPrice),
         mrp: newProduct.mrp === "" ? null : Number(newProduct.mrp),
       });
-      console.log("PRODUCT CREATED:", savedProduct);
       setProducts((currentProducts) => [savedProduct, ...currentProducts]);
       setProductSaveError("");
 
@@ -141,15 +138,11 @@ function App() {
   }
   useEffect(() => {
     async function loadProducts() {
-      console.log("LOAD PRODUCTS STARTED");
       try {
         const result = await window.api.products.list();
-        console.log("PRODUCTS FROM DATABASE:", result);
         setProducts(result);
       } catch (error) {
         console.error("Failed to load products:", error);
-      } finally {
-        setLoadingProducts(false);
       }
     }
 
@@ -207,6 +200,16 @@ function App() {
           >
             Invoices
           </button>
+          <button
+            onClick={() => setCurrentPage("reports")}
+            className={`w-full rounded-lg px-4 py-3 text-left text-sm ${
+              currentPage === "reports"
+                ? "bg-slate-900 font-medium text-white"
+                : "hover:bg-slate-100"
+            }`}
+          >
+            Reports
+          </button>
         </nav>
 
         <div className="border-t border-slate-200 p-3">
@@ -221,7 +224,6 @@ function App() {
         {savedInvoice ? (
           <InvoicePreview
             invoice={savedInvoice}
-            invoiceFormat={invoiceFormat}
             onBack={() => {
               setSavedInvoice(null);
               setInvoicePreviewSource(null);
@@ -229,6 +231,13 @@ function App() {
               if (invoicePreviewSource === "history") {
                 setCurrentPage("invoices");
               }
+            }}
+          />
+        ) : currentPage === "reports" ? (
+          <ReportsPage
+            onOpenInvoice={(invoice) => {
+              setSavedInvoice(invoice);
+              setInvoicePreviewSource("reports");
             }}
           />
         ) : currentPage === "invoices" ? (
@@ -267,7 +276,7 @@ function App() {
               <AddProductForm
                 newProduct={newProduct}
                 updateNewProduct={updateNewProduct}
-                saveProduct={saveProduct}
+                onSubmit={saveProduct}
                 productSaved={productSaved}
                 errorMessage={productSaveError}
                 onDismissError={() => setProductSaveError("")}

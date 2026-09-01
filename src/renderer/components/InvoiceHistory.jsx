@@ -8,7 +8,6 @@ function InvoiceHistory({ onOpenInvoice }) {
     async function loadInvoices() {
       try {
         const result = await window.api.invoices.list();
-        console.log("INVOICES FROM DATABASE:", result);
         setInvoices(result);
       } catch (error) {
         console.error("Failed to load invoices:", error);

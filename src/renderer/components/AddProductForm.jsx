@@ -1,8 +1,7 @@
 function AddProductForm({
   newProduct,
   updateNewProduct,
-  saveProduct,
-  updateProduct,
+  onSubmit,
   productSaved,
   errorMessage,
   onDismissError,
@@ -101,7 +100,7 @@ function AddProductForm({
 
       <div className="mt-4 flex gap-2">
         <button
-          onClick={editMode ? updateProduct : saveProduct}
+          onClick={onSubmit}
           className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white"
         >
           {editMode ? "Update Product" : "Save Product"}

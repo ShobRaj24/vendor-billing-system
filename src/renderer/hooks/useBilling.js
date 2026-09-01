@@ -165,11 +165,7 @@ export function useBilling() {
       })),
     };
 
-    console.log("SAVING INVOICE:", invoice);
-
     const savedInvoice = await window.api.invoices.create(invoice);
-
-    console.log("INVOICE SAVED:", savedInvoice);
 
     setBillItems([]);
     setAdditionalDiscount("");

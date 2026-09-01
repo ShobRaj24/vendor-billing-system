@@ -141,6 +141,99 @@ function validateInvoice(invoice) {
   };
 }
 
+function serializeInvoice(invoice) {
+  return {
+    ...invoice,
+    totalMrp: Number(invoice.totalMrp),
+    productDiscount: Number(invoice.productDiscount),
+    additionalDiscount: Number(invoice.additionalDiscount),
+    finalAmount: Number(invoice.finalAmount),
+    items: invoice.items.map((item) => ({
+      ...item,
+      quantity: Number(item.quantity),
+      mrp: item.mrp === null ? null : Number(item.mrp),
+      sellingPrice: Number(item.sellingPrice),
+      lineTotal: Number(item.lineTotal),
+    })),
+  };
+}
+
+function parseReportDate(value, endOfDay) {
+  if (!value) {
+    return null;
+  }
+
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    throw new Error("Report dates must use the YYYY-MM-DD format.");
+  }
+
+  const date = new Date(`${value}T${endOfDay ? "23:59:59.999" : "00:00:00.000"}`);
+
+  if (Number.isNaN(date.getTime())) {
+    throw new Error("Report date is invalid.");
+  }
+
+  return date;
+}
+
+function createSalesReport(invoices) {
+  const summary = invoices.reduce(
+    (totals, invoice) => ({
+      invoiceCount: totals.invoiceCount + 1,
+      itemsSold: totals.itemsSold + invoice.items.reduce(
+        (count, item) => count + Number(item.quantity),
+        0,
+      ),
+      totalMrp: totals.totalMrp + Number(invoice.totalMrp),
+      productDiscount: totals.productDiscount + Number(invoice.productDiscount),
+      additionalDiscount:
+        totals.additionalDiscount + Number(invoice.additionalDiscount),
+      netSales: totals.netSales + Number(invoice.finalAmount),
+    }),
+    {
+      invoiceCount: 0,
+      itemsSold: 0,
+      totalMrp: 0,
+      productDiscount: 0,
+      additionalDiscount: 0,
+      netSales: 0,
+    },
+  );
+
+  const products = new Map();
+
+  invoices.forEach((invoice) => {
+    invoice.items.forEach((item) => {
+      const current = products.get(item.productId) || {
+        productId: item.productId,
+        productName: item.productName,
+        unit: item.unit,
+        quantitySold: 0,
+        salesAmount: 0,
+        invoiceIds: new Set(),
+      };
+
+      current.quantitySold += Number(item.quantity);
+      current.salesAmount += Number(item.lineTotal);
+      current.invoiceIds.add(invoice.id);
+      products.set(item.productId, current);
+    });
+  });
+
+  const productSales = [...products.values()]
+    .map(({ invoiceIds, ...product }) => ({
+      ...product,
+      invoiceCount: invoiceIds.size,
+    }))
+    .sort((first, second) => second.salesAmount - first.salesAmount);
+
+  return {
+    summary,
+    invoices: invoices.map(serializeInvoice),
+    productSales,
+  };
+}
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1200,
@@ -156,8 +249,6 @@ function createWindow() {
 }
 
 ipcMain.handle("products:list", async () => {
-  console.log("PRODUCTS LIST IPC RECEIVED");
-
   const products = await prisma.product.findMany({
     where: {
       isActive: true,
@@ -174,8 +265,6 @@ ipcMain.handle("products:list", async () => {
   }));
 });
 ipcMain.handle("products:create", async (_event, product) => {
-  console.log("PRODUCT CREATE IPC RECEIVED:", product);
-
   const savedProduct = await prisma.product.create({
     data: {
       name: product.name,
@@ -188,8 +277,6 @@ ipcMain.handle("products:create", async (_event, product) => {
       isActive: true,
     },
   });
-
-  console.log("PRODUCT CREATED IN PRISMA:", savedProduct);
 
   return {
     ...savedProduct,
@@ -215,8 +302,6 @@ app.on("window-all-closed", () => {
 });
 
 ipcMain.handle("products:update", async (_event, product) => {
-  console.log("PRODUCT UPDATE IPC RECEIVED:", product);
-
   const updatedProduct = await prisma.product.update({
     where: {
       id: product.id,
@@ -232,8 +317,6 @@ ipcMain.handle("products:update", async (_event, product) => {
     },
   });
 
-  console.log("PRODUCT UPDATED IN PRISMA:", updatedProduct);
-
   return {
     ...updatedProduct,
     mrp: updatedProduct.mrp === null ? null : Number(updatedProduct.mrp),
@@ -242,8 +325,6 @@ ipcMain.handle("products:update", async (_event, product) => {
 });
 
 ipcMain.handle("products:deactivate", async (_event, productId) => {
-  console.log("PRODUCT DEACTIVATE IPC RECEIVED:", productId);
-
   await prisma.product.update({
     where: {
       id: productId,
@@ -255,8 +336,6 @@ ipcMain.handle("products:deactivate", async (_event, productId) => {
 });
 
 ipcMain.handle("invoices:create", async (_event, invoice) => {
-  console.log("INVOICE CREATE IPC RECEIVED:", invoice);
-
   const validInvoice = validateInvoice(invoice);
 
   const savedInvoice = await prisma.invoice.create({
@@ -284,28 +363,12 @@ ipcMain.handle("invoices:create", async (_event, invoice) => {
     },
   });
 
-  console.log("INVOICE CREATED:", savedInvoice);
-
   return {
-    ...savedInvoice,
-    totalMrp: Number(savedInvoice.totalMrp),
-    productDiscount: Number(savedInvoice.productDiscount),
-    additionalDiscount: Number(savedInvoice.additionalDiscount),
-    finalAmount: Number(savedInvoice.finalAmount),
-
-    items: savedInvoice.items.map((item) => ({
-      ...item,
-      quantity: Number(item.quantity),
-      mrp: item.mrp === null ? null : Number(item.mrp),
-      sellingPrice: Number(item.sellingPrice),
-      lineTotal: Number(item.lineTotal),
-    })),
+    ...serializeInvoice(savedInvoice),
   };
 });
 
 ipcMain.handle("invoices:list", async () => {
-  console.log("INVOICES LIST IPC RECEIVED");
-
   const invoices = await prisma.invoice.findMany({
     orderBy: {
       createdAt: "desc",
@@ -315,19 +378,31 @@ ipcMain.handle("invoices:list", async () => {
     },
   });
 
-  return invoices.map((invoice) => ({
-    ...invoice,
-    totalMrp: Number(invoice.totalMrp),
-    productDiscount: Number(invoice.productDiscount),
-    additionalDiscount: Number(invoice.additionalDiscount),
-    finalAmount: Number(invoice.finalAmount),
+  return invoices.map(serializeInvoice);
+});
 
-    items: invoice.items.map((item) => ({
-      ...item,
-      quantity: Number(item.quantity),
-      mrp: item.mrp === null ? null : Number(item.mrp),
-      sellingPrice: Number(item.sellingPrice),
-      lineTotal: Number(item.lineTotal),
-    })),
-  }));
+ipcMain.handle("reports:sales", async (_event, filters = {}) => {
+  const from = parseReportDate(filters.from, false);
+  const to = parseReportDate(filters.to, true);
+
+  if (from && to && from > to) {
+    throw new Error("Report start date cannot be after the end date.");
+  }
+
+  const invoices = await prisma.invoice.findMany({
+    where: {
+      createdAt: {
+        ...(from ? { gte: from } : {}),
+        ...(to ? { lte: to } : {}),
+      },
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+    include: {
+      items: true,
+    },
+  });
+
+  return createSalesReport(invoices);
 });

@@ -142,8 +142,7 @@ function ProductManagement({
           <AddProductForm
             newProduct={newProductDraft}
             updateNewProduct={updateNewProductDraft}
-            saveProduct={saveNewProduct}
-            updateProduct={() => {}}
+            onSubmit={saveNewProduct}
             productSaved={productCreated}
             errorMessage={newProductError}
             onDismissError={() => setNewProductError("")}
@@ -160,8 +159,7 @@ function ProductManagement({
           <AddProductForm
             newProduct={editProductDraft}
             updateNewProduct={updateEditProductDraft}
-            saveProduct={() => {}}
-            updateProduct={saveProductUpdate}
+            onSubmit={saveProductUpdate}
             productSaved={productUpdated}
             errorMessage={editProductError}
             onDismissError={() => setEditProductError("")}
@@ -214,10 +212,7 @@ function ProductManagement({
 
                   <td className="px-4 py-3 text-right">
                     <button
-                      onClick={() => {
-                        console.log("EDIT CLICKED:", product);
-                        startEditProduct(product);
-                      }}
+                      onClick={() => startEditProduct(product)}
                       className="mr-2 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium hover:bg-slate-50"
                     >
                       Edit

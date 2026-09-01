@@ -15,4 +15,7 @@ contextBridge.exposeInMainWorld("api", {
     create: (invoice) => ipcRenderer.invoke("invoices:create", invoice),
     list: () => ipcRenderer.invoke("invoices:list"),
   },
+  reports: {
+    sales: (filters) => ipcRenderer.invoke("reports:sales", filters),
+  },
 });

@@ -1,4 +1,4 @@
-function InvoicePreview({ invoice, invoiceFormat, onBack }) {
+function InvoicePreview({ invoice, onBack }) {
   if (!invoice) {
     return null;
   }
@@ -32,7 +32,7 @@ function InvoicePreview({ invoice, invoiceFormat, onBack }) {
       {/* Invoice */}
       <div className="flex-1 overflow-auto p-6">
         <div
-          className={`invoice-print invoice-${invoiceFormat} mx-auto bg-white shadow-sm`}
+          className="invoice-print invoice-A4 mx-auto bg-white shadow-sm"
         >
           {/* Invoice heading */}
           <div className="flex items-start justify-between border-b border-slate-200 pb-6">
