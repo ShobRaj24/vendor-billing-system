@@ -38,6 +38,7 @@ function InvoiceHistory({ onOpenInvoice }) {
           <thead className="border-b border-slate-200 bg-slate-50">
             <tr>
               <th className="px-4 py-3 text-left">Invoice</th>
+              <th className="px-4 py-3 text-left">Customer</th>
               <th className="px-4 py-3 text-left">Date</th>
               <th className="px-4 py-3 text-right">Items</th>
               <th className="px-4 py-3 text-right">Amount</th>
@@ -53,6 +54,10 @@ function InvoiceHistory({ onOpenInvoice }) {
               >
                 <td className="px-4 py-3 font-medium">
                   {invoice.invoiceNumber}
+                </td>
+
+                <td className="px-4 py-3 text-slate-500">
+                  {invoice.customerName || "Walk-in Customer"}
                 </td>
 
                 <td className="px-4 py-3 text-slate-500">

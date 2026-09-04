@@ -130,7 +130,7 @@ export function useBilling() {
     return totalMrp - subtotal;
   }, [totalMrp, subtotal]);
 
-  async function saveBill() {
+  async function saveBill(customer) {
     if (billItems.length === 0) {
       throw new Error("Add at least one product before saving the bill.");
     }
@@ -149,6 +149,8 @@ export function useBilling() {
 
     const invoice = {
       invoiceNumber: `INV-${Date.now()}`,
+      customerId: customer?.id ?? null,
+      customerName: customer?.name || "Walk-in Customer",
       totalMrp,
       productDiscount,
       additionalDiscount: discount,
@@ -176,6 +178,19 @@ export function useBilling() {
     }, 3000);
     return savedInvoice;
   }
+
+  function resetBill() {
+    setBillItems([]);
+    setAdditionalDiscount("");
+  }
+
+  function loadBill(items, discount = "") {
+    setBillItems(items || []);
+    setAdditionalDiscount(
+      discount === null || discount === undefined ? "" : String(discount),
+    );
+  }
+
   return {
     billItems,
     setBillItems,
@@ -192,6 +207,8 @@ export function useBilling() {
     subtotal,
     productDiscount,
     saveBill,
+    resetBill,
+    loadBill,
     billSaved,
   };
 }

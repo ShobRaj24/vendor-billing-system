@@ -1,4 +1,5 @@
 import { app, BrowserWindow, ipcMain } from "electron";
+import Database from "better-sqlite3";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -7,6 +8,33 @@ import { createPrismaClient } from "./main/prisma.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 let prisma;
+
+function hasTable(database, tableName) {
+  return Boolean(
+    database
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?")
+      .get(tableName),
+  );
+}
+
+function applyCustomerMigration(databasePath) {
+  const database = new Database(databasePath);
+
+  try {
+    if (hasTable(database, "Customer")) {
+      return;
+    }
+
+    const migrationPath = path.join(
+      __dirname,
+      "../prisma/migrations/20260901075959_add_customers/migration.sql",
+    );
+
+    database.exec(fs.readFileSync(migrationPath, "utf8"));
+  } finally {
+    database.close();
+  }
+}
 
 function initializeDatabase() {
   const databaseDirectory = app.getPath("userData");
@@ -19,6 +47,8 @@ function initializeDatabase() {
     fs.copyFileSync(legacyDatabasePath, databasePath);
   }
 
+  applyCustomerMigration(databasePath);
+
   return createPrismaClient(databasePath);
 }
 
@@ -30,6 +60,27 @@ function getNonNegativeNumber(value, fieldName) {
   }
 
   return number;
+}
+
+function validateCustomer(customer) {
+  if (!customer || typeof customer !== "object") {
+    throw new Error("Customer data is required.");
+  }
+
+  const name = typeof customer.name === "string" ? customer.name.trim() : "";
+  const phone = typeof customer.phone === "string" ? customer.phone.trim() : "";
+  const address =
+    typeof customer.address === "string" ? customer.address.trim() : "";
+
+  if (!name) {
+    throw new Error("Customer name is required.");
+  }
+
+  return {
+    name,
+    phone: phone || null,
+    address: address || null,
+  };
 }
 
 function numbersMatch(first, second) {
@@ -133,11 +184,44 @@ function validateInvoice(invoice) {
 
   return {
     invoiceNumber: invoice.invoiceNumber.trim(),
+    customerId:
+      invoice.customerId === null || invoice.customerId === undefined
+        ? null
+        : Number(invoice.customerId),
     totalMrp,
     productDiscount,
     additionalDiscount,
     finalAmount,
     items,
+  };
+}
+
+async function resolveInvoiceCustomer(customerId) {
+  if (customerId === null) {
+    return {
+      customerId: null,
+      customerName: "Walk-in Customer",
+    };
+  }
+
+  if (!Number.isInteger(customerId) || customerId <= 0) {
+    throw new Error("Invoice customer is invalid.");
+  }
+
+  const customer = await prisma.customer.findFirst({
+    where: {
+      id: customerId,
+      isActive: true,
+    },
+  });
+
+  if (!customer) {
+    throw new Error("Selected customer is unavailable.");
+  }
+
+  return {
+    customerId: customer.id,
+    customerName: customer.name,
   };
 }
 
@@ -335,12 +419,96 @@ ipcMain.handle("products:deactivate", async (_event, productId) => {
   });
 });
 
+ipcMain.handle("customers:list", async (_event, search = "") => {
+  const query = typeof search === "string" ? search.trim() : "";
+
+  return prisma.customer.findMany({
+    where: {
+      isActive: true,
+      ...(query
+        ? {
+            OR: [
+              { name: { contains: query } },
+              { phone: { contains: query } },
+            ],
+          }
+        : {}),
+    },
+    orderBy: {
+      name: "asc",
+    },
+  });
+});
+
+ipcMain.handle("customers:create", async (_event, customer) => {
+  return prisma.customer.create({
+    data: validateCustomer(customer),
+  });
+});
+
+ipcMain.handle("customers:update", async (_event, customer) => {
+  const customerId = Number(customer?.id);
+
+  if (!Number.isInteger(customerId) || customerId <= 0) {
+    throw new Error("Customer is invalid.");
+  }
+
+  return prisma.customer.update({
+    where: {
+      id: customerId,
+    },
+    data: validateCustomer(customer),
+  });
+});
+
+ipcMain.handle("customers:deactivate", async (_event, customerId) => {
+  const id = Number(customerId);
+
+  if (!Number.isInteger(id) || id <= 0) {
+    throw new Error("Customer is invalid.");
+  }
+
+  await prisma.customer.update({
+    where: {
+      id,
+    },
+    data: {
+      isActive: false,
+    },
+  });
+});
+
+ipcMain.handle("customers:invoices", async (_event, customerId) => {
+  const id = Number(customerId);
+
+  if (!Number.isInteger(id) || id <= 0) {
+    throw new Error("Customer is invalid.");
+  }
+
+  const invoices = await prisma.invoice.findMany({
+    where: {
+      customerId: id,
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+    include: {
+      items: true,
+    },
+  });
+
+  return invoices.map(serializeInvoice);
+});
+
 ipcMain.handle("invoices:create", async (_event, invoice) => {
   const validInvoice = validateInvoice(invoice);
+  const customer = await resolveInvoiceCustomer(validInvoice.customerId);
 
   const savedInvoice = await prisma.invoice.create({
     data: {
       invoiceNumber: validInvoice.invoiceNumber,
+      customerId: customer.customerId,
+      customerName: customer.customerName,
       totalMrp: validInvoice.totalMrp,
       productDiscount: validInvoice.productDiscount,
       additionalDiscount: validInvoice.additionalDiscount,
@@ -405,4 +573,80 @@ ipcMain.handle("reports:sales", async (_event, filters = {}) => {
   });
 
   return createSalesReport(invoices);
+});
+
+const defaultSettings = {
+  storeName: "Vendor Billing",
+  phone: "",
+  email: "",
+  address: "",
+  gstin: "",
+  receiptHeader: "Tax Invoice",
+  receiptFooter: "Thank you for your business. Please visit again.",
+  defaultPrintFormat: "A4",
+  currencySymbol: "₹",
+};
+
+function getSettingsPath() {
+  return path.join(app.getPath("userData"), "settings.json");
+}
+
+function readSettings() {
+  const settingsPath = getSettingsPath();
+  try {
+    if (fs.existsSync(settingsPath)) {
+      const data = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
+      return { ...defaultSettings, ...data };
+    }
+  } catch (error) {
+    console.error("Failed to read settings file:", error);
+  }
+  return { ...defaultSettings };
+}
+
+function writeSettings(newSettings) {
+  const settingsPath = getSettingsPath();
+  const current = readSettings();
+  const merged = {
+    ...current,
+    ...newSettings,
+    storeName:
+      typeof newSettings.storeName === "string" && newSettings.storeName.trim()
+        ? newSettings.storeName.trim()
+        : defaultSettings.storeName,
+    phone: typeof newSettings.phone === "string" ? newSettings.phone.trim() : "",
+    email: typeof newSettings.email === "string" ? newSettings.email.trim() : "",
+    address:
+      typeof newSettings.address === "string" ? newSettings.address.trim() : "",
+    gstin: typeof newSettings.gstin === "string" ? newSettings.gstin.trim() : "",
+    receiptHeader:
+      typeof newSettings.receiptHeader === "string"
+        ? newSettings.receiptHeader.trim()
+        : defaultSettings.receiptHeader,
+    receiptFooter:
+      typeof newSettings.receiptFooter === "string"
+        ? newSettings.receiptFooter.trim()
+        : defaultSettings.receiptFooter,
+    defaultPrintFormat: ["A4", "80mm", "58mm"].includes(
+      newSettings.defaultPrintFormat,
+    )
+      ? newSettings.defaultPrintFormat
+      : "A4",
+    currencySymbol:
+      typeof newSettings.currencySymbol === "string" &&
+      newSettings.currencySymbol.trim()
+        ? newSettings.currencySymbol.trim()
+        : defaultSettings.currencySymbol,
+  };
+
+  fs.writeFileSync(settingsPath, JSON.stringify(merged, null, 2), "utf8");
+  return merged;
+}
+
+ipcMain.handle("settings:get", async () => {
+  return readSettings();
+});
+
+ipcMain.handle("settings:save", async (_event, newSettings) => {
+  return writeSettings(newSettings);
 });

@@ -8,6 +8,10 @@ import InvoiceHistory from "./components/InvoiceHistory";
 import InvoicePreview from "./components/InvoicePreview";
 import ProductManagement from "./components/ProductManagement";
 import ReportsPage from "./components/ReportsPage";
+import CustomerManagement from "./components/CustomerManagement";
+import CustomerSelector from "./components/CustomerSelector";
+import SettingsPage from "./components/SettingsPage";
+import HeldBillsModal from "./components/HeldBillsModal";
 
 function App() {
   const [search, setSearch] = useState("");
@@ -23,11 +27,14 @@ function App() {
     subtotal,
     productDiscount,
     saveBill,
+    resetBill,
+    loadBill,
     billSaved,
   } = useBilling();
   const [products, setProducts] = useState([]);
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [billSaveError, setBillSaveError] = useState("");
+  const [billNotice, setBillNotice] = useState("");
   const [productSaved, setProductSaved] = useState(false);
   const [productSaveError, setProductSaveError] = useState("");
   const [newProduct, setNewProduct] = useState({
@@ -42,6 +49,105 @@ function App() {
   const [savedInvoice, setSavedInvoice] = useState(null);
   const [invoicePreviewSource, setInvoicePreviewSource] = useState(null);
   const [currentPage, setCurrentPage] = useState("billing");
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+
+  // Settings state
+  const [settings, setSettings] = useState(null);
+
+  // Held bills state
+  const [heldBills, setHeldBills] = useState(() => {
+    try {
+      const saved = localStorage.getItem("vendor_held_bills");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [showHeldBillsModal, setShowHeldBillsModal] = useState(false);
+
+  useEffect(() => {
+    async function loadSettings() {
+      try {
+        const s = await window.api.settings.get();
+        if (s) setSettings(s);
+      } catch (error) {
+        console.error("Failed to load settings:", error);
+      }
+    }
+    loadSettings();
+  }, []);
+
+  function saveHeldBills(updated) {
+    setHeldBills(updated);
+    try {
+      localStorage.setItem("vendor_held_bills", JSON.stringify(updated));
+    } catch (err) {
+      console.error("Failed to save held bills:", err);
+    }
+  }
+
+  function handleHoldBill() {
+    if (billItems.length === 0) {
+      setBillSaveError("Cannot hold an empty bill. Add products first.");
+      setTimeout(() => setBillSaveError(""), 3500);
+      return;
+    }
+
+    const newHeld = {
+      id: `hold_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      heldAt: Date.now(),
+      items: [...billItems],
+      additionalDiscount: additionalDiscount || "",
+      customer: selectedCustomer ? { ...selectedCustomer } : null,
+      finalAmount: subtotal - Number(additionalDiscount || 0),
+    };
+
+    saveHeldBills([newHeld, ...heldBills]);
+    resetBill();
+    setSelectedCustomer(null);
+    setBillSaveError("");
+    setBillNotice("Bill placed on hold.");
+    setTimeout(() => setBillNotice(""), 3500);
+  }
+
+  function handleResumeBill(billToResume) {
+    if (billItems.length > 0) {
+      const shouldHoldCurrent = window.confirm(
+        "You currently have active items on the screen. Place the current bill on hold before resuming this one?",
+      );
+      if (shouldHoldCurrent) {
+        const activeHeld = {
+          id: `hold_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          heldAt: Date.now(),
+          items: [...billItems],
+          additionalDiscount: additionalDiscount || "",
+          customer: selectedCustomer ? { ...selectedCustomer } : null,
+          finalAmount: subtotal - Number(additionalDiscount || 0),
+        };
+        const remaining = heldBills.filter((b) => b.id !== billToResume.id);
+        saveHeldBills([activeHeld, ...remaining]);
+      } else {
+        saveHeldBills(heldBills.filter((b) => b.id !== billToResume.id));
+      }
+    } else {
+      saveHeldBills(heldBills.filter((b) => b.id !== billToResume.id));
+    }
+
+    loadBill(billToResume.items, billToResume.additionalDiscount);
+    setSelectedCustomer(billToResume.customer || null);
+    setShowHeldBillsModal(false);
+    setCurrentPage("billing");
+    setBillNotice("Resumed held bill.");
+    setTimeout(() => setBillNotice(""), 3500);
+  }
+
+  function handleDiscardHeldBill(id) {
+    saveHeldBills(heldBills.filter((b) => b.id !== id));
+  }
+
+  function handleClearAllHeldBills() {
+    saveHeldBills([]);
+  }
 
   function updateNewProduct(field, value) {
     setProductSaveError("");
@@ -136,6 +242,7 @@ function App() {
       ),
     );
   }
+
   useEffect(() => {
     async function loadProducts() {
       try {
@@ -148,6 +255,7 @@ function App() {
 
     loadProducts();
   }, []);
+
   const filteredProducts = useMemo(() => {
     const value = search.trim().toLowerCase();
 
@@ -165,8 +273,10 @@ function App() {
       {/* Sidebar */}
       <aside className="flex w-56 flex-col border-r border-slate-200 bg-white">
         <div className="border-b border-slate-200 p-5">
-          <h1 className="text-xl font-bold">Vendor Billing</h1>
-          <p className="mt-1 text-xs text-slate-500">Billing System</p>
+          <h1 className="text-xl font-bold truncate">
+            {settings?.storeName || "Vendor Billing"}
+          </h1>
+          <p className="mt-1 text-xs text-slate-500">Billing & POS</p>
         </div>
 
         <nav className="flex-1 p-3">
@@ -182,7 +292,7 @@ function App() {
           </button>
           <button
             onClick={() => setCurrentPage("products")}
-            className={`w-full rounded-lg px-4 py-3 text-left text-sm ${
+            className={`mb-1 w-full rounded-lg px-4 py-3 text-left text-sm ${
               currentPage === "products"
                 ? "bg-slate-900 font-medium text-white"
                 : "hover:bg-slate-100"
@@ -192,7 +302,7 @@ function App() {
           </button>
           <button
             onClick={() => setCurrentPage("invoices")}
-            className={`w-full rounded-lg px-4 py-3 text-left text-sm ${
+            className={`mb-1 w-full rounded-lg px-4 py-3 text-left text-sm ${
               currentPage === "invoices"
                 ? "bg-slate-900 font-medium text-white"
                 : "hover:bg-slate-100"
@@ -202,7 +312,7 @@ function App() {
           </button>
           <button
             onClick={() => setCurrentPage("reports")}
-            className={`w-full rounded-lg px-4 py-3 text-left text-sm ${
+            className={`mb-1 w-full rounded-lg px-4 py-3 text-left text-sm ${
               currentPage === "reports"
                 ? "bg-slate-900 font-medium text-white"
                 : "hover:bg-slate-100"
@@ -210,11 +320,28 @@ function App() {
           >
             Reports
           </button>
+          <button
+            onClick={() => setCurrentPage("customers")}
+            className={`w-full rounded-lg px-4 py-3 text-left text-sm ${
+              currentPage === "customers"
+                ? "bg-slate-900 font-medium text-white"
+                : "hover:bg-slate-100"
+            }`}
+          >
+            Customers
+          </button>
         </nav>
 
         <div className="border-t border-slate-200 p-3">
-          <button className="w-full rounded-lg px-4 py-3 text-left text-sm hover:bg-slate-100">
-            Settings
+          <button
+            onClick={() => setCurrentPage("settings")}
+            className={`w-full rounded-lg px-4 py-3 text-left text-sm ${
+              currentPage === "settings"
+                ? "bg-slate-900 font-medium text-white"
+                : "hover:bg-slate-100 text-slate-700"
+            }`}
+          >
+            ⚙️ Settings
           </button>
         </div>
       </aside>
@@ -224,6 +351,7 @@ function App() {
         {savedInvoice ? (
           <InvoicePreview
             invoice={savedInvoice}
+            settings={settings}
             onBack={() => {
               setSavedInvoice(null);
               setInvoicePreviewSource(null);
@@ -233,6 +361,14 @@ function App() {
               }
             }}
           />
+        ) : currentPage === "settings" ? (
+          <SettingsPage
+            onSettingsSaved={(updated) => {
+              setSettings(updated);
+            }}
+          />
+        ) : currentPage === "customers" ? (
+          <CustomerManagement />
         ) : currentPage === "reports" ? (
           <ReportsPage
             onOpenInvoice={(invoice) => {
@@ -260,30 +396,47 @@ function App() {
               <div>
                 <h2 className="text-lg font-semibold">New Bill</h2>
                 <p className="text-xs text-slate-500">
-                  Start billing immediately
+                  Scan or search products to begin
                 </p>
               </div>
 
-              <div className="text-sm text-slate-500">Bill # — New</div>
+              <div className="flex items-center gap-3">
+                {heldBills.length > 0 && (
+                  <button
+                    onClick={() => setShowHeldBillsModal(true)}
+                    className="flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 shadow-xs hover:bg-amber-100"
+                  >
+                    <span>⏸ Held Bills</span>
+                    <span className="rounded-full bg-amber-200 px-1.5 py-0.2 text-[10px] text-amber-900">
+                      {heldBills.length}
+                    </span>
+                  </button>
+                )}
+
+                <button
+                  onClick={() => setShowAddProduct(true)}
+                  className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800"
+                >
+                  + Add Product
+                </button>
+              </div>
             </header>
-            <button
-              onClick={() => setShowAddProduct(true)}
-              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white"
-            >
-              + Add Product
-            </button>
+
             {showAddProduct && (
-              <AddProductForm
-                newProduct={newProduct}
-                updateNewProduct={updateNewProduct}
-                onSubmit={saveProduct}
-                productSaved={productSaved}
-                errorMessage={productSaveError}
-                onDismissError={() => setProductSaveError("")}
-                onCancel={() => setShowAddProduct(false)}
-                editMode={false}
-              />
+              <div className="px-6 pt-4">
+                <AddProductForm
+                  newProduct={newProduct}
+                  updateNewProduct={updateNewProduct}
+                  onSubmit={saveProduct}
+                  productSaved={productSaved}
+                  errorMessage={productSaveError}
+                  onDismissError={() => setProductSaveError("")}
+                  onCancel={() => setShowAddProduct(false)}
+                  editMode={false}
+                />
+              </div>
             )}
+
             <div className="flex min-h-0 flex-1 gap-4 p-4">
               {/* Product search */}
               <ProductSearch
@@ -295,24 +448,32 @@ function App() {
                   setSearch("");
                 }}
               />
-              {/* Current bill */}
 
-              <section className="flex w-[560px] flex-col rounded-xl border border-slate-200 bg-white">
+              {/* Current bill */}
+              <section className="flex w-[560px] flex-col rounded-xl border border-slate-200 bg-white shadow-xs">
                 <div className="border-b border-slate-200 p-4">
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="font-semibold">Current Bill</h3>
                       {billSaved && (
-                        <div className="mb-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-700">
+                        <div className="mt-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-xs font-medium text-green-700">
                           Bill saved successfully.
                         </div>
                       )}
-                      <p className="text-xs text-slate-500">Walk-in Customer</p>
+                      {billNotice && (
+                        <div className="mt-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700">
+                          {billNotice}
+                        </div>
+                      )}
+                      <p className="mt-1 text-xs text-slate-500">
+                        {selectedCustomer?.name || "Walk-in Customer"}
+                      </p>
                     </div>
 
-                    <button className="rounded-lg border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50">
-                      Change
-                    </button>
+                    <CustomerSelector
+                      customer={selectedCustomer}
+                      onChange={setSelectedCustomer}
+                    />
                   </div>
                 </div>
 
@@ -331,9 +492,13 @@ function App() {
                   setAdditionalDiscount={setAdditionalDiscount}
                   saveError={billSaveError}
                   onDismissSaveError={() => setBillSaveError("")}
+                  hasItems={billItems.length > 0}
+                  heldCount={heldBills.length}
+                  onHoldBill={handleHoldBill}
+                  onViewHeldBills={() => setShowHeldBillsModal(true)}
                   onSaveBill={async () => {
                     try {
-                      const invoice = await saveBill();
+                      const invoice = await saveBill(selectedCustomer);
                       setBillSaveError("");
                       setSavedInvoice(invoice);
                       setInvoicePreviewSource("billing");
@@ -352,6 +517,16 @@ function App() {
           </>
         )}
       </main>
+
+      {/* Held Bills Modal */}
+      <HeldBillsModal
+        isOpen={showHeldBillsModal}
+        onClose={() => setShowHeldBillsModal(false)}
+        heldBills={heldBills}
+        onResume={handleResumeBill}
+        onDiscard={handleDiscardHeldBill}
+        onClearAll={handleClearAllHeldBills}
+      />
     </div>
   );
 }

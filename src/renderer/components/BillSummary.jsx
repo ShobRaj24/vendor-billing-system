@@ -7,6 +7,10 @@ function BillSummary({
   saveError,
   onDismissSaveError,
   onSaveBill,
+  onHoldBill,
+  heldCount = 0,
+  onViewHeldBills,
+  hasItems = false,
 }) {
   const finalAmount = subtotal - Number(additionalDiscount || 0);
 
@@ -43,17 +47,35 @@ function BillSummary({
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-2">
-        <button className="rounded-lg border border-slate-300 px-4 py-3 font-medium">
+        <button
+          type="button"
+          onClick={onHoldBill}
+          disabled={!hasItems}
+          className="rounded-lg border border-slate-300 px-4 py-3 font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+        >
           Hold Bill
         </button>
 
         <button
+          type="button"
           onClick={onSaveBill}
-          className="rounded-lg bg-slate-900 px-4 py-3 font-medium text-white hover:bg-slate-800"
+          disabled={!hasItems}
+          className="rounded-lg bg-slate-900 px-4 py-3 font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Save Bill
         </button>
       </div>
+
+      {heldCount > 0 && (
+        <button
+          type="button"
+          onClick={onViewHeldBills}
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-100"
+        >
+          <span>⏸ {heldCount} Bill{heldCount === 1 ? "" : "s"} on Hold</span>
+          <span className="underline">View & Resume →</span>
+        </button>
+      )}
 
       {saveError && (
         <div

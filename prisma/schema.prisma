@@ -20,15 +20,29 @@ model Product {
   invoiceItems InvoiceItem[]
 }
 
+model Customer {
+  id        Int       @id @default(autoincrement())
+  name      String
+  phone     String?   @unique
+  address   String?
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  invoices  Invoice[]
+}
+
 model Invoice {
   id                 Int           @id @default(autoincrement())
   invoiceNumber      String        @unique
+  customerId         Int?
+  customerName       String        @default("Walk-in Customer")
   totalMrp           Decimal
   productDiscount    Decimal
   additionalDiscount Decimal
   finalAmount        Decimal
   createdAt          DateTime      @default(now())
 
+  customer           Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
   items              InvoiceItem[]
 }
 
