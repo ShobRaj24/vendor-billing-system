@@ -17,6 +17,12 @@ function InvoicePreview({ invoice, onBack, settings, onProductStockUpdated }) {
   const receiptFooter =
     settings?.receiptFooter || "Thank you for your business.";
 
+  const totalMrp = Number(invoice.totalMrp || 0);
+  const productDiscount = Number(invoice.productDiscount || 0);
+  const additionalDiscount = Number(invoice.additionalDiscount || 0);
+  const finalAmount = Number(invoice.finalAmount || 0);
+  const items = Array.isArray(invoice.items) ? invoice.items : [];
+
   const formatClass =
     printFormat === "80mm"
       ? "invoice-80mm max-w-[80mm]"
@@ -168,26 +174,34 @@ function InvoicePreview({ invoice, onBack, settings, onProductStockUpdated }) {
               </thead>
 
               <tbody>
-                {invoice.items.map((item) => (
-                  <tr key={item.id} className="border-b border-slate-100">
-                    <td className="py-2">
-                      <p className="font-medium text-slate-900">{item.productName}</p>
-                      <p className="text-[10px] text-slate-400">{item.unit}</p>
-                    </td>
-
-                    <td className="py-2 text-right">{item.quantity}</td>
-
-                    <td className="py-2 text-right">
-                      {currency}
-                      {item.sellingPrice.toFixed(2)}
-                    </td>
-
-                    <td className="py-2 text-right font-medium text-slate-900">
-                      {currency}
-                      {item.lineTotal.toFixed(2)}
+                {items.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="py-4 text-center text-slate-400">
+                      No items recorded in this invoice.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  items.map((item) => (
+                    <tr key={item.id || item.productId} className="border-b border-slate-100">
+                      <td className="py-2">
+                        <p className="font-medium text-slate-900">{item.productName}</p>
+                        <p className="text-[10px] text-slate-400">{item.unit}</p>
+                      </td>
+
+                      <td className="py-2 text-right">{item.quantity}</td>
+
+                      <td className="py-2 text-right">
+                        {currency}
+                        {Number(item.sellingPrice || 0).toFixed(2)}
+                      </td>
+
+                      <td className="py-2 text-right font-medium text-slate-900">
+                        {currency}
+                        {Number(item.lineTotal || 0).toFixed(2)}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -204,26 +218,26 @@ function InvoicePreview({ invoice, onBack, settings, onProductStockUpdated }) {
               <span>Total MRP</span>
               <span>
                 {currency}
-                {invoice.totalMrp.toFixed(2)}
+                {totalMrp.toFixed(2)}
               </span>
             </div>
 
-            {invoice.productDiscount > 0 && (
+            {productDiscount > 0 && (
               <div className="flex justify-between text-slate-500">
                 <span>Product Discount</span>
                 <span>
                   -{currency}
-                  {invoice.productDiscount.toFixed(2)}
+                  {productDiscount.toFixed(2)}
                 </span>
               </div>
             )}
 
-            {invoice.additionalDiscount > 0 && (
+            {additionalDiscount > 0 && (
               <div className="flex justify-between text-slate-500">
                 <span>Additional Discount</span>
                 <span>
                   -{currency}
-                  {invoice.additionalDiscount.toFixed(2)}
+                  {additionalDiscount.toFixed(2)}
                 </span>
               </div>
             )}
@@ -232,7 +246,7 @@ function InvoicePreview({ invoice, onBack, settings, onProductStockUpdated }) {
               <span>Final Amount</span>
               <span>
                 {currency}
-                {invoice.finalAmount.toFixed(2)}
+                {finalAmount.toFixed(2)}
               </span>
             </div>
           </div>

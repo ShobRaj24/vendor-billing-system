@@ -55,6 +55,7 @@ function App() {
   const [invoicePreviewSource, setInvoicePreviewSource] = useState(null);
   const [currentPage, setCurrentPage] = useState("dashboard");
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [inwardInitialProduct, setInwardInitialProduct] = useState(null);
 
   // Settings state
   const [settings, setSettings] = useState(null);
@@ -423,6 +424,10 @@ function App() {
         ) : currentPage === "dashboard" ? (
           <DashboardPage
             onNavigate={(page) => setCurrentPage(page)}
+            onInwardProduct={(product) => {
+              setInwardInitialProduct(product);
+              setCurrentPage("purchases");
+            }}
             onOpenInvoice={(invoice) => {
               setSavedInvoice(invoice);
               setInvoicePreviewSource("dashboard");
@@ -432,6 +437,8 @@ function App() {
           <PurchasesPage
             products={products}
             onProductStockUpdated={loadProducts}
+            initialProduct={inwardInitialProduct}
+            onClearInitialProduct={() => setInwardInitialProduct(null)}
           />
         ) : currentPage === "settings" ? (
           <SettingsPage

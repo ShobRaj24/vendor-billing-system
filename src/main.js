@@ -1003,9 +1003,24 @@ ipcMain.handle("dashboard:summary", async () => {
   const totalProducts = sqliteDb.prepare("SELECT COUNT(*) as count FROM Product WHERE isActive = 1").get().count;
   const totalCustomers = sqliteDb.prepare("SELECT COUNT(*) as count FROM Customer WHERE isActive = 1").get().count;
 
-  const recentInvoices = todayInvoices.slice(0, 5).map((inv) => ({
+  const allRecentInvoices = sqliteDb.prepare(`
+    SELECT * FROM Invoice ORDER BY createdAt DESC LIMIT 5
+  `).all();
+
+  const getItemStmt = sqliteDb.prepare("SELECT * FROM InvoiceItem WHERE invoiceId = ?");
+  const recentInvoices = allRecentInvoices.map((inv) => ({
     ...inv,
-    finalAmount: Number(inv.finalAmount),
+    totalMrp: Number(inv.totalMrp || 0),
+    productDiscount: Number(inv.productDiscount || 0),
+    additionalDiscount: Number(inv.additionalDiscount || 0),
+    finalAmount: Number(inv.finalAmount || 0),
+    items: getItemStmt.all(inv.id).map((item) => ({
+      ...item,
+      quantity: Number(item.quantity),
+      mrp: item.mrp === null ? null : Number(item.mrp),
+      sellingPrice: Number(item.sellingPrice),
+      lineTotal: Number(item.lineTotal),
+    })),
   }));
 
   return {

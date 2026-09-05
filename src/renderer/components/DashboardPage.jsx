@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-function DashboardPage({ onNavigate, onOpenInvoice }) {
+function DashboardPage({ onNavigate, onOpenInvoice, onInwardProduct }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -184,8 +184,14 @@ function DashboardPage({ onNavigate, onOpenInvoice }) {
                       </span>
 
                       <button
-                        onClick={() => onNavigate("purchases")}
-                        className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-100"
+                        onClick={() => {
+                          if (onInwardProduct) {
+                            onInwardProduct(item);
+                          } else {
+                            onNavigate("purchases");
+                          }
+                        }}
+                        className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-100 transition-colors"
                       >
                         + Inward
                       </button>
@@ -196,13 +202,13 @@ function DashboardPage({ onNavigate, onOpenInvoice }) {
             </div>
           </div>
 
-          {/* Today's Recent Invoices */}
+          {/* Recent Invoices */}
           <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
                 <span className="text-base">🕒</span>
                 <h3 className="font-semibold text-sm text-slate-900">
-                  Today's Recent Bills
+                  Recent Bills
                 </h3>
               </div>
               <button
@@ -216,7 +222,7 @@ function DashboardPage({ onNavigate, onOpenInvoice }) {
             <div className="mt-3 divide-y divide-slate-100 text-xs">
               {data?.recentInvoices?.length === 0 ? (
                 <div className="py-8 text-center text-slate-400">
-                  No invoices created today yet.
+                  No invoices created yet.
                 </div>
               ) : (
                 data?.recentInvoices?.map((inv) => (
@@ -226,11 +232,14 @@ function DashboardPage({ onNavigate, onOpenInvoice }) {
                     className="flex cursor-pointer items-center justify-between py-2.5 hover:bg-slate-50/80 rounded-lg px-2 transition-colors"
                   >
                     <div>
-                      <p className="font-semibold text-slate-900">
-                        {inv.invoiceNumber}
+                      <p className="font-semibold text-xs text-slate-900">
+                        {inv.customerName || "Walk-in Customer"}
                       </p>
-                      <p className="text-[10px] text-slate-500">
-                        {inv.customerName || "Walk-in Customer"} •{" "}
+                      <p className="mt-0.5 text-[11px] text-slate-500">
+                        <span className="font-mono text-slate-700 font-medium">
+                          {inv.invoiceNumber}
+                        </span>
+                        {" • "}
                         {new Date(inv.createdAt).toLocaleTimeString([], {
                           hour: "2-digit",
                           minute: "2-digit",

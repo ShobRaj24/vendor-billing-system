@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 
-function PurchasesPage({ products = [], onProductStockUpdated }) {
+function PurchasesPage({
+  products = [],
+  onProductStockUpdated,
+  initialProduct,
+  onClearInitialProduct,
+}) {
   const [tab, setTab] = useState("purchases"); // 'purchases' | 'suppliers'
   const [purchases, setPurchases] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
@@ -56,6 +61,33 @@ function PurchasesPage({ products = [], onProductStockUpdated }) {
     }
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (initialProduct) {
+      setTab("purchases");
+      setShowNewPurchase(true);
+      const product =
+        activeProducts.find((p) => p.id === initialProduct.id) || initialProduct;
+      const cost = Math.round(Number(product.sellingPrice || 0) * 0.75);
+
+      setPurchaseItems([
+        {
+          productId: product.id,
+          productName: product.name,
+          unit: product.unit || "Piece",
+          quantity: 10,
+          costPrice: cost,
+        },
+      ]);
+      setSelectedProductId("");
+      setAddItemQty("1");
+      setAddItemCost("");
+
+      if (onClearInitialProduct) {
+        onClearInitialProduct();
+      }
+    }
+  }, [initialProduct, activeProducts]);
 
   // Purchase item addition
   function handleAddItemToPurchase() {
@@ -428,10 +460,52 @@ function PurchasesPage({ products = [], onProductStockUpdated }) {
                                 {item.productName} ({item.unit})
                               </td>
                               <td className="px-3 py-2 text-right font-semibold">
-                                +{item.quantity}
+                                <div className="inline-flex items-center justify-end gap-1">
+                                  <span className="text-slate-400 font-normal">+</span>
+                                  <input
+                                    type="number"
+                                    step="any"
+                                    min="0.1"
+                                    value={item.quantity}
+                                    onChange={(e) => {
+                                      const val = Number(e.target.value);
+                                      if (Number.isFinite(val) && val >= 0) {
+                                        setPurchaseItems((items) =>
+                                          items.map((i) =>
+                                            i.productId === item.productId
+                                              ? { ...i, quantity: val }
+                                              : i,
+                                          ),
+                                        );
+                                      }
+                                    }}
+                                    className="w-16 rounded border border-slate-300 px-1.5 py-0.5 text-right text-xs font-semibold"
+                                  />
+                                </div>
                               </td>
                               <td className="px-3 py-2 text-right text-slate-600">
-                                ₹{item.costPrice.toFixed(2)}
+                                <div className="inline-flex items-center justify-end gap-1">
+                                  <span className="text-slate-400 font-normal">₹</span>
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={item.costPrice}
+                                    onChange={(e) => {
+                                      const val = Number(e.target.value);
+                                      if (Number.isFinite(val) && val >= 0) {
+                                        setPurchaseItems((items) =>
+                                          items.map((i) =>
+                                            i.productId === item.productId
+                                              ? { ...i, costPrice: val }
+                                              : i,
+                                          ),
+                                        );
+                                      }
+                                    }}
+                                    className="w-20 rounded border border-slate-300 px-1.5 py-0.5 text-right text-xs text-slate-700"
+                                  />
+                                </div>
                               </td>
                               <td className="px-3 py-2 text-right font-bold text-slate-900">
                                 ₹{(item.quantity * item.costPrice).toFixed(2)}
