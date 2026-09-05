@@ -39,6 +39,8 @@ export function useBilling() {
           quantity: 1,
           mrp: product.mrp,
           sellingPrice: product.sellingPrice,
+          stockQuantity: product.stockQuantity,
+          trackStock: product.trackStock,
         },
         ...currentItems,
       ];

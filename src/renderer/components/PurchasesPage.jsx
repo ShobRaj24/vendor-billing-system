@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
 
-function PurchasesPage({ products, onProductStockUpdated }) {
+function PurchasesPage({ products = [], onProductStockUpdated }) {
   const [tab, setTab] = useState("purchases"); // 'purchases' | 'suppliers'
   const [purchases, setPurchases] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [fallbackProducts, setFallbackProducts] = useState([]);
+
+  const activeProducts = products && products.length > 0 ? products : fallbackProducts;
 
   // New Purchase State
   const [showNewPurchase, setShowNewPurchase] = useState(false);
@@ -37,12 +40,14 @@ function PurchasesPage({ products, onProductStockUpdated }) {
     async function loadData() {
       try {
         setLoading(true);
-        const [pList, sList] = await Promise.all([
+        const [pList, sList, prodList] = await Promise.all([
           window.api.purchases.list(),
           window.api.suppliers.list(),
+          window.api.products.list(),
         ]);
         setPurchases(pList);
         setSuppliers(sList);
+        if (prodList) setFallbackProducts(prodList);
       } catch (err) {
         console.error("Failed to load purchases/suppliers:", err);
       } finally {
@@ -59,7 +64,7 @@ function PurchasesPage({ products, onProductStockUpdated }) {
       setPurchaseError("Select a product to add.");
       return;
     }
-    const product = products.find((p) => p.id === Number(selectedProductId));
+    const product = activeProducts.find((p) => p.id === Number(selectedProductId));
     if (!product) return;
 
     const qty = Number(addItemQty);
@@ -344,7 +349,7 @@ function PurchasesPage({ products, onProductStockUpdated }) {
                             value={selectedProductId}
                             onChange={(e) => {
                               setSelectedProductId(e.target.value);
-                              const p = products.find(
+                              const p = activeProducts.find(
                                 (item) => item.id === Number(e.target.value),
                               );
                               if (p && !addItemCost) {
@@ -355,7 +360,7 @@ function PurchasesPage({ products, onProductStockUpdated }) {
                             className="w-full rounded-lg border border-slate-300 px-3 py-1.5 bg-white"
                           >
                             <option value="">Select a product...</option>
-                            {products.map((p) => (
+                            {activeProducts.map((p) => (
                               <option key={p.id} value={p.id}>
                                 {p.name} ({p.unit}) — Current Stock: {p.stockQuantity}
                               </option>

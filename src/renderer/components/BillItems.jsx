@@ -116,6 +116,25 @@ function BillItems({ billItems, updatePrice, updateQuantity, removeItem }) {
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="font-medium">{item.name}</p>
+                  {item.trackStock !== false &&
+                    item.stockQuantity !== undefined &&
+                    item.stockQuantity !== null && (
+                      <p className="mt-0.5 text-[10px]">
+                        {item.quantity > item.stockQuantity ? (
+                          <span className="font-semibold text-amber-700">
+                            ⚠️ Exceeds stock ({item.stockQuantity} {item.unit} available)
+                          </span>
+                        ) : item.stockQuantity <= 0 ? (
+                          <span className="font-semibold text-red-600">
+                            ⚠️ Out of stock (0)
+                          </span>
+                        ) : (
+                          <span className="text-slate-400">
+                            Stock: {item.stockQuantity} {item.unit}
+                          </span>
+                        )}
+                      </p>
+                    )}
 
                   <div className="mt-3 grid grid-cols-2 gap-2">
                     <div>

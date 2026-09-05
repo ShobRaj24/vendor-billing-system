@@ -49,6 +49,10 @@ function applyInventoryColumnsMigration(database) {
     if (!hasColumn(database, "Product", "trackStock")) {
       database.exec('ALTER TABLE "Product" ADD COLUMN "trackStock" BOOLEAN NOT NULL DEFAULT 1;');
     }
+
+    database.exec('UPDATE "Product" SET "stockQuantity" = 0 WHERE "stockQuantity" IS NULL;');
+    database.exec('UPDATE "Product" SET "lowStockAlert" = 5 WHERE "lowStockAlert" IS NULL;');
+    database.exec('UPDATE "Product" SET "trackStock" = 1 WHERE "trackStock" IS NULL;');
   }
 }
 
@@ -552,13 +556,18 @@ ipcMain.handle("products:deactivate", async (_event, productId) => {
   sqliteDb.prepare("UPDATE Product SET isActive = 0 WHERE id = ?").run(productId);
 });
 
-ipcMain.handle("products:adjustStock", async (_event, { productId, newStock }) => {
-  const stock = Number(newStock);
-  if (!Number.isFinite(stock)) throw new Error("Stock quantity must be a valid number.");
+ipcMain.handle("products:adjustStock", async (_event, arg1, arg2) => {
+  const productId =
+    typeof arg1 === "object" && arg1 !== null ? Number(arg1.productId) : Number(arg1);
+  const newStock =
+    typeof arg1 === "object" && arg1 !== null ? Number(arg1.newStock) : Number(arg2);
+
+  if (!Number.isFinite(productId)) throw new Error("Product ID must be a valid number.");
+  if (!Number.isFinite(newStock)) throw new Error("Stock quantity must be a valid number.");
 
   sqliteDb.prepare(`
     UPDATE Product SET stockQuantity = ?, updatedAt = datetime('now') WHERE id = ?
-  `).run(stock, productId);
+  `).run(newStock, productId);
 
   const row = sqliteDb.prepare("SELECT * FROM Product WHERE id = ?").get(productId);
   return {
@@ -708,7 +717,7 @@ ipcMain.handle("invoices:create", async (_event, invoice) => {
 
   // Automatically deduct stock for tracked products
   const updateStockStmt = sqliteDb.prepare(`
-    UPDATE Product SET stockQuantity = stockQuantity - ?, updatedAt = datetime('now')
+    UPDATE Product SET stockQuantity = COALESCE(stockQuantity, 0) - ?, updatedAt = datetime('now')
     WHERE id = ? AND trackStock = 1
   `);
 
@@ -825,7 +834,7 @@ ipcMain.handle("purchases:create", async (_event, purchase) => {
   `);
 
   const updateProductStock = sqliteDb.prepare(`
-    UPDATE Product SET stockQuantity = stockQuantity + ?, updatedAt = datetime('now') WHERE id = ?
+    UPDATE Product SET stockQuantity = COALESCE(stockQuantity, 0) + ?, updatedAt = datetime('now') WHERE id = ?
   `);
 
   const transaction = sqliteDb.transaction(() => {
@@ -913,7 +922,7 @@ ipcMain.handle("returns:create", async (_event, returnData) => {
   `);
 
   const restockProduct = sqliteDb.prepare(`
-    UPDATE Product SET stockQuantity = stockQuantity + ?, updatedAt = datetime('now') WHERE id = ?
+    UPDATE Product SET stockQuantity = COALESCE(stockQuantity, 0) + ?, updatedAt = datetime('now') WHERE id = ?
   `);
 
   const transaction = sqliteDb.transaction(() => {
