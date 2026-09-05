@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, ipcMain, dialog } from "electron";
 import Database from "better-sqlite3";
 import fs from "fs";
 import path from "path";
@@ -8,6 +8,7 @@ import { createPrismaClient } from "./main/prisma.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 let prisma;
+let sqliteDb;
 
 function hasTable(database, tableName) {
   return Boolean(
@@ -17,20 +18,133 @@ function hasTable(database, tableName) {
   );
 }
 
-function applyCustomerMigration(databasePath) {
-  const database = new Database(databasePath);
+function hasColumn(database, tableName, columnName) {
+  const columns = database.prepare(`PRAGMA table_info("${tableName}")`).all();
+  return columns.some((col) => col.name === columnName);
+}
 
-  try {
-    if (hasTable(database, "Customer")) {
-      return;
-    }
+function applyCustomerMigration(database) {
+  if (hasTable(database, "Customer")) {
+    return;
+  }
 
-    const migrationPath = path.join(
-      __dirname,
-      "../prisma/migrations/20260901075959_add_customers/migration.sql",
-    );
+  const migrationPath = path.join(
+    __dirname,
+    "../prisma/migrations/20260901075959_add_customers/migration.sql",
+  );
 
+  if (fs.existsSync(migrationPath)) {
     database.exec(fs.readFileSync(migrationPath, "utf8"));
+  }
+}
+
+function applyInventoryColumnsMigration(database) {
+  if (hasTable(database, "Product")) {
+    if (!hasColumn(database, "Product", "stockQuantity")) {
+      database.exec('ALTER TABLE "Product" ADD COLUMN "stockQuantity" DECIMAL NOT NULL DEFAULT 0;');
+    }
+    if (!hasColumn(database, "Product", "lowStockAlert")) {
+      database.exec('ALTER TABLE "Product" ADD COLUMN "lowStockAlert" DECIMAL DEFAULT 5;');
+    }
+    if (!hasColumn(database, "Product", "trackStock")) {
+      database.exec('ALTER TABLE "Product" ADD COLUMN "trackStock" BOOLEAN NOT NULL DEFAULT 1;');
+    }
+  }
+}
+
+function applyPurchasesMigration(database) {
+  if (!hasTable(database, "Supplier")) {
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS "Supplier" (
+        "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        "name" TEXT NOT NULL,
+        "phone" TEXT,
+        "email" TEXT,
+        "address" TEXT,
+        "gstin" TEXT,
+        "isActive" BOOLEAN NOT NULL DEFAULT 1,
+        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+  }
+
+  if (!hasTable(database, "Purchase")) {
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS "Purchase" (
+        "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        "purchaseNumber" TEXT NOT NULL UNIQUE,
+        "supplierId" INTEGER,
+        "supplierName" TEXT NOT NULL DEFAULT 'Cash Supplier',
+        "billNumber" TEXT,
+        "totalAmount" DECIMAL NOT NULL,
+        "notes" TEXT,
+        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "Purchase_supplierId_fkey" FOREIGN KEY ("supplierId") REFERENCES "Supplier" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+      );
+    `);
+  }
+
+  if (!hasTable(database, "PurchaseItem")) {
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS "PurchaseItem" (
+        "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        "purchaseId" INTEGER NOT NULL,
+        "productId" INTEGER NOT NULL,
+        "productName" TEXT NOT NULL,
+        "unit" TEXT NOT NULL DEFAULT 'Piece',
+        "quantity" DECIMAL NOT NULL,
+        "costPrice" DECIMAL NOT NULL,
+        "lineTotal" DECIMAL NOT NULL,
+        CONSTRAINT "PurchaseItem_purchaseId_fkey" FOREIGN KEY ("purchaseId") REFERENCES "Purchase" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+        CONSTRAINT "PurchaseItem_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+      );
+    `);
+  }
+}
+
+function applySalesReturnsMigration(database) {
+  if (!hasTable(database, "SalesReturn")) {
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS "SalesReturn" (
+        "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        "returnNumber" TEXT NOT NULL UNIQUE,
+        "invoiceId" INTEGER,
+        "invoiceNumber" TEXT NOT NULL,
+        "customerName" TEXT NOT NULL DEFAULT 'Walk-in Customer',
+        "refundAmount" DECIMAL NOT NULL,
+        "reason" TEXT,
+        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "SalesReturn_invoiceId_fkey" FOREIGN KEY ("invoiceId") REFERENCES "Invoice" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+      );
+    `);
+  }
+
+  if (!hasTable(database, "SalesReturnItem")) {
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS "SalesReturnItem" (
+        "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        "salesReturnId" INTEGER NOT NULL,
+        "productId" INTEGER NOT NULL,
+        "productName" TEXT NOT NULL,
+        "unit" TEXT NOT NULL DEFAULT 'Piece',
+        "quantity" DECIMAL NOT NULL,
+        "refundPrice" DECIMAL NOT NULL,
+        "lineTotal" DECIMAL NOT NULL,
+        CONSTRAINT "SalesReturnItem_salesReturnId_fkey" FOREIGN KEY ("salesReturnId") REFERENCES "SalesReturn" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+        CONSTRAINT "SalesReturnItem_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+      );
+    `);
+  }
+}
+
+function applyAllMigrations(databasePath) {
+  const database = new Database(databasePath);
+  try {
+    applyCustomerMigration(database);
+    applyInventoryColumnsMigration(database);
+    applyPurchasesMigration(database);
+    applySalesReturnsMigration(database);
   } finally {
     database.close();
   }
@@ -47,8 +161,16 @@ function initializeDatabase() {
     fs.copyFileSync(legacyDatabasePath, databasePath);
   }
 
-  applyCustomerMigration(databasePath);
+  applyAllMigrations(databasePath);
+  if (fs.existsSync(legacyDatabasePath)) {
+    try {
+      applyAllMigrations(legacyDatabasePath);
+    } catch (err) {
+      console.warn("Could not apply migrations to dev.db:", err);
+    }
+  }
 
+  sqliteDb = new Database(databasePath);
   return createPrismaClient(databasePath);
 }
 
@@ -320,8 +442,8 @@ function createSalesReport(invoices) {
 
 function createWindow() {
   const win = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    width: 1280,
+    height: 850,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -332,92 +454,141 @@ function createWindow() {
   win.loadFile(path.join(__dirname, "../dist/index.html"));
 }
 
-ipcMain.handle("products:list", async () => {
-  const products = await prisma.product.findMany({
-    where: {
-      isActive: true,
-    },
-    orderBy: {
-      name: "asc",
-    },
-  });
+/* =========================================================
+   IPC HANDLERS: PRODUCTS & INVENTORY
+========================================================= */
 
-  return products.map((product) => ({
-    ...product,
-    mrp: product.mrp === null ? null : Number(product.mrp),
-    sellingPrice: Number(product.sellingPrice),
+ipcMain.handle("products:list", async () => {
+  const rows = sqliteDb.prepare(`
+    SELECT * FROM Product WHERE isActive = 1 ORDER BY name ASC
+  `).all();
+
+  return rows.map((p) => ({
+    ...p,
+    isActive: Boolean(p.isActive),
+    trackStock: p.trackStock === undefined ? true : Boolean(p.trackStock),
+    mrp: p.mrp === null ? null : Number(p.mrp),
+    sellingPrice: Number(p.sellingPrice),
+    stockQuantity: Number(p.stockQuantity || 0),
+    lowStockAlert: p.lowStockAlert === null ? 5 : Number(p.lowStockAlert),
   }));
 });
+
 ipcMain.handle("products:create", async (_event, product) => {
-  const savedProduct = await prisma.product.create({
-    data: {
-      name: product.name,
-      sku: product.sku || null,
-      barcode: product.barcode || null,
-      category: product.category || null,
-      unit: product.unit || "Piece",
-      mrp: product.mrp === "" || product.mrp == null ? null : product.mrp,
-      sellingPrice: product.sellingPrice,
-      isActive: true,
-    },
-  });
+  const mrp = product.mrp === "" || product.mrp == null ? null : Number(product.mrp);
+  const sellingPrice = Number(product.sellingPrice);
+  const stockQuantity = product.stockQuantity === "" || product.stockQuantity == null ? 0 : Number(product.stockQuantity);
+  const lowStockAlert = product.lowStockAlert === "" || product.lowStockAlert == null ? 5 : Number(product.lowStockAlert);
+  const trackStock = product.trackStock === false ? 0 : 1;
 
+  const stmt = sqliteDb.prepare(`
+    INSERT INTO Product (name, sku, barcode, category, unit, mrp, sellingPrice, stockQuantity, lowStockAlert, trackStock, isActive, createdAt, updatedAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))
+  `);
+
+  const info = stmt.run(
+    product.name.trim(),
+    product.sku ? product.sku.trim() : null,
+    product.barcode ? product.barcode.trim() : null,
+    product.category ? product.category.trim() : null,
+    product.unit || "Piece",
+    mrp,
+    sellingPrice,
+    stockQuantity,
+    lowStockAlert,
+    trackStock,
+  );
+
+  const row = sqliteDb.prepare("SELECT * FROM Product WHERE id = ?").get(info.lastInsertRowid);
   return {
-    ...savedProduct,
-    mrp: savedProduct.mrp === null ? null : Number(savedProduct.mrp),
-    sellingPrice: Number(savedProduct.sellingPrice),
+    ...row,
+    isActive: Boolean(row.isActive),
+    trackStock: Boolean(row.trackStock),
+    mrp: row.mrp === null ? null : Number(row.mrp),
+    sellingPrice: Number(row.sellingPrice),
+    stockQuantity: Number(row.stockQuantity || 0),
+    lowStockAlert: Number(row.lowStockAlert || 5),
   };
-});
-app.whenReady().then(() => {
-  prisma = initializeDatabase();
-  createWindow();
-
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
-    }
-  });
-});
-
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
-    app.quit();
-  }
 });
 
 ipcMain.handle("products:update", async (_event, product) => {
-  const updatedProduct = await prisma.product.update({
-    where: {
-      id: product.id,
-    },
-    data: {
-      name: product.name,
-      sku: product.sku || null,
-      barcode: product.barcode || null,
-      category: product.category || null,
-      unit: product.unit || "Piece",
-      mrp: product.mrp === "" || product.mrp == null ? null : product.mrp,
-      sellingPrice: product.sellingPrice,
-    },
-  });
+  const mrp = product.mrp === "" || product.mrp == null ? null : Number(product.mrp);
+  const sellingPrice = Number(product.sellingPrice);
+  const stockQuantity = product.stockQuantity === "" || product.stockQuantity == null ? 0 : Number(product.stockQuantity);
+  const lowStockAlert = product.lowStockAlert === "" || product.lowStockAlert == null ? 5 : Number(product.lowStockAlert);
+  const trackStock = product.trackStock === false ? 0 : 1;
 
+  sqliteDb.prepare(`
+    UPDATE Product
+    SET name = ?, sku = ?, barcode = ?, category = ?, unit = ?, mrp = ?, sellingPrice = ?, stockQuantity = ?, lowStockAlert = ?, trackStock = ?, updatedAt = datetime('now')
+    WHERE id = ?
+  `).run(
+    product.name.trim(),
+    product.sku ? product.sku.trim() : null,
+    product.barcode ? product.barcode.trim() : null,
+    product.category ? product.category.trim() : null,
+    product.unit || "Piece",
+    mrp,
+    sellingPrice,
+    stockQuantity,
+    lowStockAlert,
+    trackStock,
+    product.id,
+  );
+
+  const row = sqliteDb.prepare("SELECT * FROM Product WHERE id = ?").get(product.id);
   return {
-    ...updatedProduct,
-    mrp: updatedProduct.mrp === null ? null : Number(updatedProduct.mrp),
-    sellingPrice: Number(updatedProduct.sellingPrice),
+    ...row,
+    isActive: Boolean(row.isActive),
+    trackStock: Boolean(row.trackStock),
+    mrp: row.mrp === null ? null : Number(row.mrp),
+    sellingPrice: Number(row.sellingPrice),
+    stockQuantity: Number(row.stockQuantity || 0),
+    lowStockAlert: Number(row.lowStockAlert || 5),
   };
 });
 
 ipcMain.handle("products:deactivate", async (_event, productId) => {
-  await prisma.product.update({
-    where: {
-      id: productId,
-    },
-    data: {
-      isActive: false,
-    },
-  });
+  sqliteDb.prepare("UPDATE Product SET isActive = 0 WHERE id = ?").run(productId);
 });
+
+ipcMain.handle("products:adjustStock", async (_event, { productId, newStock }) => {
+  const stock = Number(newStock);
+  if (!Number.isFinite(stock)) throw new Error("Stock quantity must be a valid number.");
+
+  sqliteDb.prepare(`
+    UPDATE Product SET stockQuantity = ?, updatedAt = datetime('now') WHERE id = ?
+  `).run(stock, productId);
+
+  const row = sqliteDb.prepare("SELECT * FROM Product WHERE id = ?").get(productId);
+  return {
+    ...row,
+    isActive: Boolean(row.isActive),
+    trackStock: Boolean(row.trackStock),
+    mrp: row.mrp === null ? null : Number(row.mrp),
+    sellingPrice: Number(row.sellingPrice),
+    stockQuantity: Number(row.stockQuantity || 0),
+    lowStockAlert: Number(row.lowStockAlert || 5),
+  };
+});
+
+ipcMain.handle("products:lowStock", async () => {
+  const rows = sqliteDb.prepare(`
+    SELECT * FROM Product WHERE isActive = 1 AND trackStock = 1 AND stockQuantity <= lowStockAlert ORDER BY stockQuantity ASC
+  `).all();
+
+  return rows.map((p) => ({
+    ...p,
+    mrp: p.mrp === null ? null : Number(p.mrp),
+    sellingPrice: Number(p.sellingPrice),
+    stockQuantity: Number(p.stockQuantity || 0),
+    lowStockAlert: Number(p.lowStockAlert || 5),
+  }));
+});
+
+/* =========================================================
+   IPC HANDLERS: CUSTOMERS
+========================================================= */
 
 ipcMain.handle("customers:list", async (_event, search = "") => {
   const query = typeof search === "string" ? search.trim() : "";
@@ -500,6 +671,10 @@ ipcMain.handle("customers:invoices", async (_event, customerId) => {
   return invoices.map(serializeInvoice);
 });
 
+/* =========================================================
+   IPC HANDLERS: INVOICES & AUTOMATIC STOCK DEDUCTION
+========================================================= */
+
 ipcMain.handle("invoices:create", async (_event, invoice) => {
   const validInvoice = validateInvoice(invoice);
   const customer = await resolveInvoiceCustomer(validInvoice.customerId);
@@ -531,6 +706,20 @@ ipcMain.handle("invoices:create", async (_event, invoice) => {
     },
   });
 
+  // Automatically deduct stock for tracked products
+  const updateStockStmt = sqliteDb.prepare(`
+    UPDATE Product SET stockQuantity = stockQuantity - ?, updatedAt = datetime('now')
+    WHERE id = ? AND trackStock = 1
+  `);
+
+  for (const item of validInvoice.items) {
+    try {
+      updateStockStmt.run(item.quantity, item.productId);
+    } catch (err) {
+      console.warn(`Could not deduct stock for product #${item.productId}:`, err);
+    }
+  }
+
   return {
     ...serializeInvoice(savedInvoice),
   };
@@ -547,6 +736,278 @@ ipcMain.handle("invoices:list", async () => {
   });
 
   return invoices.map(serializeInvoice);
+});
+
+/* =========================================================
+   IPC HANDLERS: SUPPLIERS & PURCHASES (VENDOR INWARD)
+========================================================= */
+
+ipcMain.handle("suppliers:list", async (_event, search = "") => {
+  const query = typeof search === "string" ? search.trim() : "";
+  if (query) {
+    return sqliteDb.prepare(`
+      SELECT * FROM Supplier WHERE isActive = 1 AND (name LIKE ? OR phone LIKE ?) ORDER BY name ASC
+    `).all(`%${query}%`, `%${query}%`);
+  }
+  return sqliteDb.prepare("SELECT * FROM Supplier WHERE isActive = 1 ORDER BY name ASC").all();
+});
+
+ipcMain.handle("suppliers:create", async (_event, supplier) => {
+  if (!supplier?.name?.trim()) throw new Error("Supplier name is required.");
+  const stmt = sqliteDb.prepare(`
+    INSERT INTO Supplier (name, phone, email, address, gstin, isActive, createdAt, updatedAt)
+    VALUES (?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))
+  `);
+  const info = stmt.run(
+    supplier.name.trim(),
+    supplier.phone ? supplier.phone.trim() : null,
+    supplier.email ? supplier.email.trim() : null,
+    supplier.address ? supplier.address.trim() : null,
+    supplier.gstin ? supplier.gstin.trim() : null,
+  );
+  return sqliteDb.prepare("SELECT * FROM Supplier WHERE id = ?").get(info.lastInsertRowid);
+});
+
+ipcMain.handle("suppliers:update", async (_event, supplier) => {
+  if (!supplier?.id) throw new Error("Supplier ID required");
+  if (!supplier?.name?.trim()) throw new Error("Supplier name is required.");
+  sqliteDb.prepare(`
+    UPDATE Supplier SET name = ?, phone = ?, email = ?, address = ?, gstin = ?, updatedAt = datetime('now')
+    WHERE id = ?
+  `).run(
+    supplier.name.trim(),
+    supplier.phone ? supplier.phone.trim() : null,
+    supplier.email ? supplier.email.trim() : null,
+    supplier.address ? supplier.address.trim() : null,
+    supplier.gstin ? supplier.gstin.trim() : null,
+    supplier.id,
+  );
+  return sqliteDb.prepare("SELECT * FROM Supplier WHERE id = ?").get(supplier.id);
+});
+
+ipcMain.handle("suppliers:deactivate", async (_event, supplierId) => {
+  sqliteDb.prepare("UPDATE Supplier SET isActive = 0 WHERE id = ?").run(supplierId);
+});
+
+ipcMain.handle("purchases:list", async () => {
+  const purchases = sqliteDb.prepare("SELECT * FROM Purchase ORDER BY createdAt DESC").all();
+  const getItems = sqliteDb.prepare("SELECT * FROM PurchaseItem WHERE purchaseId = ?");
+  return purchases.map((p) => ({
+    ...p,
+    totalAmount: Number(p.totalAmount),
+    items: getItems.all(p.id).map((i) => ({
+      ...i,
+      quantity: Number(i.quantity),
+      costPrice: Number(i.costPrice),
+      lineTotal: Number(i.lineTotal),
+    })),
+  }));
+});
+
+ipcMain.handle("purchases:create", async (_event, purchase) => {
+  if (!purchase.items || purchase.items.length === 0) {
+    throw new Error("Add at least one item to inward purchase.");
+  }
+  const purchaseNumber = `PUR-${Date.now()}`;
+  const totalAmount = purchase.items.reduce(
+    (sum, item) => sum + Number(item.quantity) * Number(item.costPrice),
+    0,
+  );
+
+  const insertPurchase = sqliteDb.prepare(`
+    INSERT INTO Purchase (purchaseNumber, supplierId, supplierName, billNumber, totalAmount, notes, createdAt)
+    VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+  `);
+
+  const insertItem = sqliteDb.prepare(`
+    INSERT INTO PurchaseItem (purchaseId, productId, productName, unit, quantity, costPrice, lineTotal)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  const updateProductStock = sqliteDb.prepare(`
+    UPDATE Product SET stockQuantity = stockQuantity + ?, updatedAt = datetime('now') WHERE id = ?
+  `);
+
+  const transaction = sqliteDb.transaction(() => {
+    const info = insertPurchase.run(
+      purchaseNumber,
+      purchase.supplierId || null,
+      purchase.supplierName || "Cash Supplier",
+      purchase.billNumber || null,
+      totalAmount,
+      purchase.notes || null,
+    );
+    const purchaseId = info.lastInsertRowid;
+
+    for (const item of purchase.items) {
+      const qty = Number(item.quantity);
+      const cost = Number(item.costPrice);
+      const lineTotal = qty * cost;
+      insertItem.run(
+        purchaseId,
+        item.productId,
+        item.productName,
+        item.unit || "Piece",
+        qty,
+        cost,
+        lineTotal,
+      );
+      updateProductStock.run(qty, item.productId);
+    }
+    return purchaseId;
+  });
+
+  const createdId = transaction();
+  const created = sqliteDb.prepare("SELECT * FROM Purchase WHERE id = ?").get(createdId);
+  const items = sqliteDb.prepare("SELECT * FROM PurchaseItem WHERE purchaseId = ?").all(createdId);
+
+  return {
+    ...created,
+    totalAmount: Number(created.totalAmount),
+    items: items.map((i) => ({
+      ...i,
+      quantity: Number(i.quantity),
+      costPrice: Number(i.costPrice),
+      lineTotal: Number(i.lineTotal),
+    })),
+  };
+});
+
+/* =========================================================
+   IPC HANDLERS: SALES RETURNS (CREDIT NOTES)
+========================================================= */
+
+ipcMain.handle("returns:list", async () => {
+  const returns = sqliteDb.prepare("SELECT * FROM SalesReturn ORDER BY createdAt DESC").all();
+  const getItems = sqliteDb.prepare("SELECT * FROM SalesReturnItem WHERE salesReturnId = ?");
+  return returns.map((r) => ({
+    ...r,
+    refundAmount: Number(r.refundAmount),
+    items: getItems.all(r.id).map((i) => ({
+      ...i,
+      quantity: Number(i.quantity),
+      refundPrice: Number(i.refundPrice),
+      lineTotal: Number(i.lineTotal),
+    })),
+  }));
+});
+
+ipcMain.handle("returns:create", async (_event, returnData) => {
+  if (!returnData.items || returnData.items.length === 0) {
+    throw new Error("Add at least one item to return.");
+  }
+  const returnNumber = `RET-${Date.now()}`;
+  const refundAmount = returnData.items.reduce(
+    (sum, item) => sum + Number(item.quantity) * Number(item.refundPrice),
+    0,
+  );
+
+  const insertReturn = sqliteDb.prepare(`
+    INSERT INTO SalesReturn (returnNumber, invoiceId, invoiceNumber, customerName, refundAmount, reason, createdAt)
+    VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+  `);
+
+  const insertItem = sqliteDb.prepare(`
+    INSERT INTO SalesReturnItem (salesReturnId, productId, productName, unit, quantity, refundPrice, lineTotal)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  const restockProduct = sqliteDb.prepare(`
+    UPDATE Product SET stockQuantity = stockQuantity + ?, updatedAt = datetime('now') WHERE id = ?
+  `);
+
+  const transaction = sqliteDb.transaction(() => {
+    const info = insertReturn.run(
+      returnNumber,
+      returnData.invoiceId || null,
+      returnData.invoiceNumber || "",
+      returnData.customerName || "Walk-in Customer",
+      refundAmount,
+      returnData.reason || null,
+    );
+    const returnId = info.lastInsertRowid;
+
+    for (const item of returnData.items) {
+      const qty = Number(item.quantity);
+      const price = Number(item.refundPrice);
+      const lineTotal = qty * price;
+      insertItem.run(
+        returnId,
+        item.productId,
+        item.productName,
+        item.unit || "Piece",
+        qty,
+        price,
+        lineTotal,
+      );
+      restockProduct.run(qty, item.productId);
+    }
+    return returnId;
+  });
+
+  const createdId = transaction();
+  const created = sqliteDb.prepare("SELECT * FROM SalesReturn WHERE id = ?").get(createdId);
+  const items = sqliteDb.prepare("SELECT * FROM SalesReturnItem WHERE salesReturnId = ?").all(createdId);
+
+  return {
+    ...created,
+    refundAmount: Number(created.refundAmount),
+    items: items.map((i) => ({
+      ...i,
+      quantity: Number(i.quantity),
+      refundPrice: Number(i.refundPrice),
+      lineTotal: Number(i.lineTotal),
+    })),
+  };
+});
+
+/* =========================================================
+   IPC HANDLERS: DASHBOARD & REPORTS
+========================================================= */
+
+ipcMain.handle("dashboard:summary", async () => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayStartStr = today.toISOString();
+
+  const todayInvoices = sqliteDb.prepare(`
+    SELECT * FROM Invoice WHERE createdAt >= ? ORDER BY createdAt DESC
+  `).all(todayStartStr);
+
+  const todaySales = todayInvoices.reduce((sum, inv) => sum + Number(inv.finalAmount), 0);
+  const todayInvoiceCount = todayInvoices.length;
+
+  const lowStockProducts = sqliteDb.prepare(`
+    SELECT * FROM Product WHERE isActive = 1 AND trackStock = 1 AND stockQuantity <= lowStockAlert ORDER BY stockQuantity ASC LIMIT 8
+  `).all().map((p) => ({
+    ...p,
+    mrp: p.mrp === null ? null : Number(p.mrp),
+    sellingPrice: Number(p.sellingPrice),
+    stockQuantity: Number(p.stockQuantity || 0),
+    lowStockAlert: Number(p.lowStockAlert || 5),
+  }));
+
+  const totalLowStockCount = sqliteDb.prepare(`
+    SELECT COUNT(*) as count FROM Product WHERE isActive = 1 AND trackStock = 1 AND stockQuantity <= lowStockAlert
+  `).get().count;
+
+  const totalProducts = sqliteDb.prepare("SELECT COUNT(*) as count FROM Product WHERE isActive = 1").get().count;
+  const totalCustomers = sqliteDb.prepare("SELECT COUNT(*) as count FROM Customer WHERE isActive = 1").get().count;
+
+  const recentInvoices = todayInvoices.slice(0, 5).map((inv) => ({
+    ...inv,
+    finalAmount: Number(inv.finalAmount),
+  }));
+
+  return {
+    todaySales,
+    todayInvoiceCount,
+    lowStockProducts,
+    totalLowStockCount,
+    totalProducts,
+    totalCustomers,
+    recentInvoices,
+  };
 });
 
 ipcMain.handle("reports:sales", async (_event, filters = {}) => {
@@ -575,12 +1036,17 @@ ipcMain.handle("reports:sales", async (_event, filters = {}) => {
   return createSalesReport(invoices);
 });
 
+/* =========================================================
+   IPC HANDLERS: SETTINGS & DATABASE BACKUP
+========================================================= */
+
 const defaultSettings = {
   storeName: "Vendor Billing",
   phone: "",
   email: "",
   address: "",
   gstin: "",
+  invoicePrefix: "INV-",
   receiptHeader: "Tax Invoice",
   receiptFooter: "Thank you for your business. Please visit again.",
   defaultPrintFormat: "A4",
@@ -619,6 +1085,10 @@ function writeSettings(newSettings) {
     address:
       typeof newSettings.address === "string" ? newSettings.address.trim() : "",
     gstin: typeof newSettings.gstin === "string" ? newSettings.gstin.trim() : "",
+    invoicePrefix:
+      typeof newSettings.invoicePrefix === "string" && newSettings.invoicePrefix.trim()
+        ? newSettings.invoicePrefix.trim()
+        : defaultSettings.invoicePrefix,
     receiptHeader:
       typeof newSettings.receiptHeader === "string"
         ? newSettings.receiptHeader.trim()
@@ -649,4 +1119,43 @@ ipcMain.handle("settings:get", async () => {
 
 ipcMain.handle("settings:save", async (_event, newSettings) => {
   return writeSettings(newSettings);
+});
+
+ipcMain.handle("settings:backup", async () => {
+  const dbPath = path.join(app.getPath("userData"), "vendor-billing.db");
+  if (!fs.existsSync(dbPath)) {
+    throw new Error("Database file not found.");
+  }
+  const dateStr = new Date().toISOString().slice(0, 10);
+  const { canceled, filePath } = await dialog.showSaveDialog({
+    title: "Save Vendor Billing Database Backup",
+    defaultPath: `vendor-billing-backup-${dateStr}.db`,
+    filters: [{ name: "SQLite Database", extensions: ["db", "sqlite"] }],
+  });
+
+  if (canceled || !filePath) return { canceled: true };
+
+  fs.copyFileSync(dbPath, filePath);
+  return { success: true, filePath };
+});
+
+/* =========================================================
+   APP LIFECYCLE
+========================================================= */
+
+app.whenReady().then(() => {
+  prisma = initializeDatabase();
+  createWindow();
+
+  app.on("activate", () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow();
+    }
+  });
+});
+
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") {
+    app.quit();
+  }
 });

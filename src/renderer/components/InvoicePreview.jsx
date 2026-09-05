@@ -1,9 +1,11 @@
 import { useState } from "react";
+import SalesReturnsModal from "./SalesReturnsModal";
 
-function InvoicePreview({ invoice, onBack, settings }) {
+function InvoicePreview({ invoice, onBack, settings, onProductStockUpdated }) {
   const [printFormat, setPrintFormat] = useState(
     settings?.defaultPrintFormat || "A4",
   );
+  const [showReturnModal, setShowReturnModal] = useState(false);
 
   if (!invoice) {
     return null;
@@ -54,20 +56,38 @@ function InvoicePreview({ invoice, onBack, settings }) {
           </div>
 
           <button
+            onClick={() => setShowReturnModal(true)}
+            className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-100"
+          >
+            ↩️ Return Items
+          </button>
+
+          <button
             onClick={onBack}
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-50"
+            className="rounded-lg border border-slate-300 px-4 py-2 text-xs font-medium hover:bg-slate-50"
           >
             Back
           </button>
 
           <button
             onClick={() => window.print()}
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+            className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
           >
             Print
           </button>
         </div>
       </header>
+
+      <SalesReturnsModal
+        invoice={invoice}
+        isOpen={showReturnModal}
+        onClose={() => setShowReturnModal(false)}
+        onReturnSuccess={() => {
+          if (onProductStockUpdated) {
+            onProductStockUpdated();
+          }
+        }}
+      />
 
       {/* Invoice Document */}
       <div className="flex-1 overflow-auto p-6">

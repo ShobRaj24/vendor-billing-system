@@ -1,23 +1,29 @@
 generator client {
   provider = "prisma-client-js"
 }
+
 datasource db {
   provider = "sqlite"
 }
 
 model Product {
-  id           Int      @id @default(autoincrement())
-  name         String
-  sku          String?  @unique
-  barcode      String?  @unique
-  category     String?
-  unit         String   @default("Piece")
-  mrp          Decimal?
-  sellingPrice Decimal
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  invoiceItems InvoiceItem[]
+  id               Int               @id @default(autoincrement())
+  name             String
+  sku              String?           @unique
+  barcode          String?           @unique
+  category         String?
+  unit             String            @default("Piece")
+  mrp              Decimal?
+  sellingPrice     Decimal
+  stockQuantity    Decimal           @default(0)
+  lowStockAlert    Decimal?          @default(5)
+  trackStock       Boolean           @default(true)
+  isActive         Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  invoiceItems     InvoiceItem[]
+  purchaseItems    PurchaseItem[]
+  salesReturnItems SalesReturnItem[]
 }
 
 model Customer {
@@ -44,6 +50,7 @@ model Invoice {
 
   customer           Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
   items              InvoiceItem[]
+  salesReturns       SalesReturn[]
 }
 
 model InvoiceItem {
@@ -60,4 +67,73 @@ model InvoiceItem {
 
   invoice        Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   product        Product  @relation(fields: [productId], references: [id])
+}
+
+model Supplier {
+  id        Int        @id @default(autoincrement())
+  name      String
+  phone     String?
+  email     String?
+  address   String?
+  gstin     String?
+  isActive  Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  purchases Purchase[]
+}
+
+model Purchase {
+  id             Int            @id @default(autoincrement())
+  purchaseNumber String         @unique
+  supplierId     Int?
+  supplierName   String         @default("Cash Supplier")
+  billNumber     String?
+  totalAmount    Decimal
+  notes          String?
+  createdAt      DateTime       @default(now())
+
+  supplier       Supplier?      @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  items          PurchaseItem[]
+}
+
+model PurchaseItem {
+  id          Int      @id @default(autoincrement())
+  purchaseId  Int
+  productId   Int
+  productName String
+  unit        String   @default("Piece")
+  quantity    Decimal
+  costPrice   Decimal
+  lineTotal   Decimal
+
+  purchase    Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  product     Product  @relation(fields: [productId], references: [id])
+}
+
+model SalesReturn {
+  id           Int               @id @default(autoincrement())
+  returnNumber String            @unique
+  invoiceId    Int?
+  invoiceNumber String
+  customerName String            @default("Walk-in Customer")
+  refundAmount Decimal
+  reason       String?
+  createdAt    DateTime          @default(now())
+
+  invoice      Invoice?          @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  items        SalesReturnItem[]
+}
+
+model SalesReturnItem {
+  id            Int         @id @default(autoincrement())
+  salesReturnId Int
+  productId     Int
+  productName   String
+  unit          String      @default("Piece")
+  quantity      Decimal
+  refundPrice   Decimal
+  lineTotal     Decimal
+
+  salesReturn   SalesReturn @relation(fields: [salesReturnId], references: [id], onDelete: Cascade)
+  product       Product     @relation(fields: [productId], references: [id])
 }

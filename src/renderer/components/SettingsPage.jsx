@@ -6,6 +6,7 @@ const defaultSettings = {
   email: "",
   address: "",
   gstin: "",
+  invoicePrefix: "INV-",
   receiptHeader: "Tax Invoice",
   receiptFooter: "Thank you for your business. Please visit again.",
   defaultPrintFormat: "A4",
@@ -19,13 +20,17 @@ function SettingsPage({ onSettingsSaved }) {
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [error, setError] = useState("");
 
+  // Backup State
+  const [backingUp, setBackingUp] = useState(false);
+  const [backupMsg, setBackupMsg] = useState("");
+
   useEffect(() => {
     async function loadSettings() {
       try {
         setLoading(true);
         const data = await window.api.settings.get();
         if (data) {
-          setSettings(data);
+          setSettings({ ...defaultSettings, ...data });
         }
       } catch (loadError) {
         console.error("Failed to load settings:", loadError);
@@ -74,6 +79,21 @@ function SettingsPage({ onSettingsSaved }) {
     }
   }
 
+  async function handleBackup() {
+    try {
+      setBackingUp(true);
+      setBackupMsg("");
+      const result = await window.api.settings.backup();
+      if (result?.success) {
+        setBackupMsg(`Backup saved to: ${result.filePath}`);
+      }
+    } catch (err) {
+      alert("Backup failed: " + (err.message || err));
+    } finally {
+      setBackingUp(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center p-6 text-sm text-slate-500">
@@ -83,45 +103,68 @@ function SettingsPage({ onSettingsSaved }) {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-auto bg-slate-100">
-      <header className="border-b border-slate-200 bg-white px-6 py-4">
-        <h2 className="text-lg font-semibold">Store & Billing Settings</h2>
-        <p className="text-xs text-slate-500">
-          Configure your business profile, receipt headers, and printing preferences.
-        </p>
+    <div className="relative flex min-h-0 flex-1 flex-col overflow-auto bg-slate-100">
+      {/* Floating Persistent Toast Notification */}
+      {savedSuccess && (
+        <div
+          role="alert"
+          className="fixed top-6 right-6 z-50 flex items-center gap-3 rounded-2xl border border-emerald-300 bg-emerald-600 px-5 py-3.5 text-sm font-semibold text-white shadow-2xl transition-all"
+        >
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-xs">
+            ✓
+          </span>
+          <span>Settings saved successfully!</span>
+          <button
+            onClick={() => setSavedSuccess(false)}
+            className="ml-2 rounded p-0.5 text-white/80 hover:bg-white/10 hover:text-white"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {error && (
+        <div
+          role="alert"
+          className="fixed top-6 right-6 z-50 flex items-center gap-3 rounded-2xl border border-red-300 bg-red-600 px-5 py-3.5 text-sm font-semibold text-white shadow-2xl transition-all"
+        >
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-xs">
+            ⚠️
+          </span>
+          <span>{error}</span>
+          <button
+            onClick={() => setError("")}
+            className="ml-2 rounded p-0.5 text-white/80 hover:bg-white/10 hover:text-white"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* Header with quick save action */}
+      <header className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4 shadow-xs">
+        <div>
+          <h2 className="text-lg font-semibold text-slate-900">Store & Billing Settings</h2>
+          <p className="text-xs text-slate-500">
+            Configure your business profile, receipt headers, and printing preferences.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving}
+          className={`flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold shadow-xs transition-all ${
+            savedSuccess
+              ? "bg-emerald-600 text-white"
+              : "bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50"
+          }`}
+        >
+          {saving ? "Saving..." : savedSuccess ? "✓ Saved!" : "Save Settings"}
+        </button>
       </header>
 
       <div className="mx-auto w-full max-w-4xl space-y-6 p-6">
-        {savedSuccess && (
-          <div
-            role="alert"
-            className="flex items-center justify-between rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-800"
-          >
-            <span>Settings saved successfully!</span>
-            <button
-              onClick={() => setSavedSuccess(false)}
-              className="text-green-700 hover:text-green-900"
-            >
-              ×
-            </button>
-          </div>
-        )}
-
-        {error && (
-          <div
-            role="alert"
-            className="flex items-center justify-between rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-          >
-            <span>{error}</span>
-            <button
-              onClick={() => setError("")}
-              className="text-red-700 hover:text-red-900"
-            >
-              ×
-            </button>
-          </div>
-        )}
-
         <form onSubmit={handleSave} className="space-y-6">
           {/* Business Profile */}
           <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -207,7 +250,7 @@ function SettingsPage({ onSettingsSaved }) {
               Receipt & Printing Preferences
             </h3>
             <p className="mt-0.5 text-xs text-slate-500">
-              Control the default look, format, and messages on your printed bills.
+              Control the default look, format, and numbering prefix on your printed bills.
             </p>
 
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -220,6 +263,19 @@ function SettingsPage({ onSettingsSaved }) {
                   value={settings.receiptHeader}
                   onChange={(e) => updateField("receiptHeader", e.target.value)}
                   placeholder="e.g. Tax Invoice, Cash Receipt"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-700">
+                  Invoice Number Prefix
+                </label>
+                <input
+                  type="text"
+                  value={settings.invoicePrefix || "INV-"}
+                  onChange={(e) => updateField("invoicePrefix", e.target.value)}
+                  placeholder="e.g. INV- or BILL-"
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
                 />
               </div>
@@ -287,6 +343,34 @@ function SettingsPage({ onSettingsSaved }) {
             </div>
           </section>
 
+          {/* Database & Backup Management */}
+          <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h3 className="text-base font-semibold text-slate-900">
+              Database & Backup
+            </h3>
+            <p className="mt-0.5 text-xs text-slate-500">
+              Create an offline backup copy of your local SQLite billing database.
+            </p>
+
+            <div className="mt-4 flex flex-wrap items-center gap-4">
+              <button
+                type="button"
+                disabled={backingUp}
+                onClick={handleBackup}
+                className="flex items-center gap-2 rounded-lg border border-slate-300 bg-slate-50 px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+              >
+                <span>💾</span>
+                <span>{backingUp ? "Backing up..." : "Backup Database (.db)"}</span>
+              </button>
+
+              {backupMsg && (
+                <span className="text-xs font-medium text-emerald-700">
+                  ✓ {backupMsg}
+                </span>
+              )}
+            </div>
+          </section>
+
           {/* Receipt Preview Preview */}
           <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             <h3 className="text-base font-semibold text-slate-900">
@@ -328,14 +412,18 @@ function SettingsPage({ onSettingsSaved }) {
             </div>
           </section>
 
-          {/* Actions */}
-          <div className="flex justify-end gap-3">
+          {/* Bottom Actions */}
+          <div className="flex items-center justify-end gap-3 pb-8">
             <button
               type="submit"
               disabled={saving}
-              className="rounded-lg bg-slate-900 px-6 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-slate-800 disabled:opacity-50"
+              className={`flex items-center gap-2 rounded-xl px-6 py-2.5 text-sm font-semibold shadow-sm transition-all ${
+                savedSuccess
+                  ? "bg-emerald-600 text-white"
+                  : "bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50"
+              }`}
             >
-              {saving ? "Saving..." : "Save Settings"}
+              {saving ? "Saving..." : savedSuccess ? "✓ Settings Saved!" : "Save Settings"}
             </button>
           </div>
         </form>

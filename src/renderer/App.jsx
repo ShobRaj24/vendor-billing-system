@@ -12,6 +12,8 @@ import CustomerManagement from "./components/CustomerManagement";
 import CustomerSelector from "./components/CustomerSelector";
 import SettingsPage from "./components/SettingsPage";
 import HeldBillsModal from "./components/HeldBillsModal";
+import DashboardPage from "./components/DashboardPage";
+import PurchasesPage from "./components/PurchasesPage";
 
 function App() {
   const [search, setSearch] = useState("");
@@ -45,10 +47,13 @@ function App() {
     unit: "Piece",
     mrp: "",
     sellingPrice: "",
+    stockQuantity: "0",
+    lowStockAlert: "5",
+    trackStock: true,
   });
   const [savedInvoice, setSavedInvoice] = useState(null);
   const [invoicePreviewSource, setInvoicePreviewSource] = useState(null);
-  const [currentPage, setCurrentPage] = useState("billing");
+  const [currentPage, setCurrentPage] = useState("dashboard");
   const [selectedCustomer, setSelectedCustomer] = useState(null);
 
   // Settings state
@@ -110,34 +115,43 @@ function App() {
     setTimeout(() => setBillNotice(""), 3500);
   }
 
-  function handleResumeBill(billToResume) {
-    if (billItems.length > 0) {
-      const shouldHoldCurrent = window.confirm(
-        "You currently have active items on the screen. Place the current bill on hold before resuming this one?",
-      );
-      if (shouldHoldCurrent) {
-        const activeHeld = {
-          id: `hold_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-          heldAt: Date.now(),
-          items: [...billItems],
-          additionalDiscount: additionalDiscount || "",
-          customer: selectedCustomer ? { ...selectedCustomer } : null,
-          finalAmount: subtotal - Number(additionalDiscount || 0),
-        };
-        const remaining = heldBills.filter((b) => b.id !== billToResume.id);
-        saveHeldBills([activeHeld, ...remaining]);
-      } else {
-        saveHeldBills(heldBills.filter((b) => b.id !== billToResume.id));
-      }
-    } else {
-      saveHeldBills(heldBills.filter((b) => b.id !== billToResume.id));
-    }
+  function handleResume(billToResume) {
+    loadBill(billToResume.items, billToResume.additionalDiscount);
+    setSelectedCustomer(billToResume.customer || null);
+    saveHeldBills(heldBills.filter((b) => b.id !== billToResume.id));
+    setShowHeldBillsModal(false);
+    setCurrentPage("billing");
+    setBillNotice("Resumed held bill.");
+    setTimeout(() => setBillNotice(""), 3500);
+  }
+
+  function handleResumeWithHold(billToResume) {
+    const activeHeld = {
+      id: `hold_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      heldAt: Date.now(),
+      items: [...billItems],
+      additionalDiscount: additionalDiscount || "",
+      customer: selectedCustomer ? { ...selectedCustomer } : null,
+      finalAmount: subtotal - Number(additionalDiscount || 0),
+    };
+    const remaining = heldBills.filter((b) => b.id !== billToResume.id);
+    saveHeldBills([activeHeld, ...remaining]);
 
     loadBill(billToResume.items, billToResume.additionalDiscount);
     setSelectedCustomer(billToResume.customer || null);
     setShowHeldBillsModal(false);
     setCurrentPage("billing");
-    setBillNotice("Resumed held bill.");
+    setBillNotice("Active bill placed on hold & selected bill resumed.");
+    setTimeout(() => setBillNotice(""), 3500);
+  }
+
+  function handleResumeWithDiscard(billToResume) {
+    saveHeldBills(heldBills.filter((b) => b.id !== billToResume.id));
+    loadBill(billToResume.items, billToResume.additionalDiscount);
+    setSelectedCustomer(billToResume.customer || null);
+    setShowHeldBillsModal(false);
+    setCurrentPage("billing");
+    setBillNotice("Active bill discarded & selected bill resumed.");
     setTimeout(() => setBillNotice(""), 3500);
   }
 
@@ -173,6 +187,9 @@ function App() {
         ...newProduct,
         sellingPrice: Number(newProduct.sellingPrice),
         mrp: newProduct.mrp === "" ? null : Number(newProduct.mrp),
+        stockQuantity: Number(newProduct.stockQuantity || 0),
+        lowStockAlert: Number(newProduct.lowStockAlert || 5),
+        trackStock: newProduct.trackStock !== false,
       });
       setProducts((currentProducts) => [savedProduct, ...currentProducts]);
       setProductSaveError("");
@@ -185,6 +202,9 @@ function App() {
         unit: "Piece",
         mrp: "",
         sellingPrice: "",
+        stockQuantity: "0",
+        lowStockAlert: "5",
+        trackStock: true,
       });
 
       setProductSaved(true);
@@ -203,6 +223,9 @@ function App() {
       ...product,
       sellingPrice: Number(product.sellingPrice),
       mrp: product.mrp === "" ? null : Number(product.mrp),
+      stockQuantity: Number(product.stockQuantity || 0),
+      lowStockAlert: Number(product.lowStockAlert || 5),
+      trackStock: product.trackStock !== false,
     });
 
     setProducts((currentProducts) => [savedProduct, ...currentProducts]);
@@ -234,6 +257,9 @@ function App() {
       ...product,
       sellingPrice: Number(product.sellingPrice),
       mrp: product.mrp === "" ? null : Number(product.mrp),
+      stockQuantity: Number(product.stockQuantity || 0),
+      lowStockAlert: Number(product.lowStockAlert || 5),
+      trackStock: product.trackStock !== false,
     });
 
     setProducts((currentProducts) =>
@@ -243,18 +269,23 @@ function App() {
     );
   }
 
-  useEffect(() => {
-    async function loadProducts() {
-      try {
-        const result = await window.api.products.list();
-        setProducts(result);
-      } catch (error) {
-        console.error("Failed to load products:", error);
-      }
+  async function loadProducts() {
+    try {
+      const result = await window.api.products.list();
+      setProducts(result);
+    } catch (error) {
+      console.error("Failed to load products:", error);
     }
+  }
 
+  useEffect(() => {
     loadProducts();
   }, []);
+
+  async function handleAdjustStock(productId, quantity) {
+    await window.api.products.adjustStock(productId, quantity);
+    await loadProducts();
+  }
 
   const filteredProducts = useMemo(() => {
     const value = search.trim().toLowerCase();
@@ -281,6 +312,16 @@ function App() {
 
         <nav className="flex-1 p-3">
           <button
+            onClick={() => setCurrentPage("dashboard")}
+            className={`mb-1 w-full rounded-lg px-4 py-3 text-left text-sm ${
+              currentPage === "dashboard"
+                ? "bg-slate-900 font-medium text-white"
+                : "hover:bg-slate-100"
+            }`}
+          >
+            📊 Dashboard
+          </button>
+          <button
             onClick={() => setCurrentPage("billing")}
             className={`mb-1 w-full rounded-lg px-4 py-3 text-left text-sm ${
               currentPage === "billing"
@@ -288,7 +329,7 @@ function App() {
                 : "hover:bg-slate-100"
             }`}
           >
-            New Bill
+            🧾 New Bill
           </button>
           <button
             onClick={() => setCurrentPage("products")}
@@ -298,7 +339,17 @@ function App() {
                 : "hover:bg-slate-100"
             }`}
           >
-            Products
+            📦 Products & Stock
+          </button>
+          <button
+            onClick={() => setCurrentPage("purchases")}
+            className={`mb-1 w-full rounded-lg px-4 py-3 text-left text-sm ${
+              currentPage === "purchases"
+                ? "bg-slate-900 font-medium text-white"
+                : "hover:bg-slate-100"
+            }`}
+          >
+            🛒 Purchases
           </button>
           <button
             onClick={() => setCurrentPage("invoices")}
@@ -308,7 +359,7 @@ function App() {
                 : "hover:bg-slate-100"
             }`}
           >
-            Invoices
+            📚 Invoices
           </button>
           <button
             onClick={() => setCurrentPage("reports")}
@@ -318,7 +369,7 @@ function App() {
                 : "hover:bg-slate-100"
             }`}
           >
-            Reports
+            📈 Reports
           </button>
           <button
             onClick={() => setCurrentPage("customers")}
@@ -328,7 +379,7 @@ function App() {
                 : "hover:bg-slate-100"
             }`}
           >
-            Customers
+            👥 Customers
           </button>
         </nav>
 
@@ -352,14 +403,35 @@ function App() {
           <InvoicePreview
             invoice={savedInvoice}
             settings={settings}
+            onProductStockUpdated={loadProducts}
             onBack={() => {
               setSavedInvoice(null);
+              const source = invoicePreviewSource;
               setInvoicePreviewSource(null);
 
-              if (invoicePreviewSource === "history") {
+              if (source === "history") {
                 setCurrentPage("invoices");
+              } else if (source === "reports") {
+                setCurrentPage("reports");
+              } else if (source === "dashboard") {
+                setCurrentPage("dashboard");
+              } else {
+                setCurrentPage("billing");
               }
             }}
+          />
+        ) : currentPage === "dashboard" ? (
+          <DashboardPage
+            onNavigate={(page) => setCurrentPage(page)}
+            onOpenInvoice={(invoice) => {
+              setSavedInvoice(invoice);
+              setInvoicePreviewSource("dashboard");
+            }}
+          />
+        ) : currentPage === "purchases" ? (
+          <PurchasesPage
+            products={products}
+            onProductStockUpdated={loadProducts}
           />
         ) : currentPage === "settings" ? (
           <SettingsPage
@@ -388,6 +460,7 @@ function App() {
             products={products}
             onCreateProduct={createProductFromProductsPage}
             onUpdateProduct={updateProductFromProductsPage}
+            onAdjustStock={handleAdjustStock}
             onDelete={deleteProduct}
           />
         ) : (
@@ -499,6 +572,7 @@ function App() {
                   onSaveBill={async () => {
                     try {
                       const invoice = await saveBill(selectedCustomer);
+                      await loadProducts();
                       setBillSaveError("");
                       setSavedInvoice(invoice);
                       setInvoicePreviewSource("billing");
@@ -523,7 +597,10 @@ function App() {
         isOpen={showHeldBillsModal}
         onClose={() => setShowHeldBillsModal(false)}
         heldBills={heldBills}
-        onResume={handleResumeBill}
+        hasActiveBill={billItems.length > 0}
+        onResume={handleResume}
+        onResumeWithHold={handleResumeWithHold}
+        onResumeWithDiscard={handleResumeWithDiscard}
         onDiscard={handleDiscardHeldBill}
         onClearAll={handleClearAllHeldBills}
       />
