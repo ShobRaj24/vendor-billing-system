@@ -29,7 +29,7 @@ function DashboardPage({ onNavigate, onOpenInvoice, onInwardProduct }) {
 
   const todaySales = data?.todaySales || 0;
   const todayInvoiceCount = data?.todayInvoiceCount || 0;
-  const avgTicket = todayInvoiceCount > 0 ? todaySales / todayInvoiceCount : 0;
+  const totalProducts = data?.totalProducts || 0;
   const lowStockCount = data?.totalLowStockCount || 0;
 
   return (
@@ -117,11 +117,11 @@ function DashboardPage({ onNavigate, onOpenInvoice, onInwardProduct }) {
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs border-l-4 border-l-emerald-600">
-            <p className="text-xs font-medium text-slate-500">Avg Ticket Size</p>
+            <p className="text-xs font-medium text-slate-500">Total Catalog Products</p>
             <p className="mt-1.5 text-2xl font-bold text-slate-900">
-              ₹{avgTicket.toFixed(2)}
+              {totalProducts}
             </p>
-            <p className="mt-0.5 text-[11px] text-slate-400">Average sales per bill</p>
+            <p className="mt-0.5 text-[11px] text-slate-400">Active items in store</p>
           </div>
 
           <div className={`rounded-xl border bg-white p-5 shadow-xs border-l-4 ${
