@@ -296,9 +296,77 @@ function App() {
     }
 
     return products.filter((product) =>
-      product.name.toLowerCase().includes(value),
+      product.name?.toLowerCase().includes(value) ||
+      (product.barcode && product.barcode.toLowerCase().includes(value)) ||
+      (product.sku && product.sku.toLowerCase().includes(value)) ||
+      (product.category && product.category.toLowerCase().includes(value)),
     );
   }, [search, products]);
+
+  const totalItemsCount = useMemo(
+    () =>
+      billItems.reduce(
+        (acc, item) => acc + (Number(item.quantity) || 0),
+        0,
+      ),
+    [billItems],
+  );
+
+  function handleClearBill() {
+    if (billItems.length === 0) return;
+    if (window.confirm("Are you sure you want to clear the current bill?")) {
+      resetBill();
+      setSelectedCustomer(null);
+    }
+  }
+
+  async function handleSaveCurrentBill() {
+    if (billItems.length === 0) return;
+    try {
+      const invoice = await saveBill(selectedCustomer);
+      await loadProducts();
+      setBillSaveError("");
+      setSavedInvoice(invoice);
+      setInvoicePreviewSource("billing");
+    } catch (error) {
+      console.error("Failed to save bill:", error);
+      setBillSaveError(error?.message || String(error));
+
+      setTimeout(() => {
+        setBillSaveError("");
+      }, 5000);
+    }
+  }
+
+  useEffect(() => {
+    function handleKeyDown(e) {
+      if (currentPage !== "billing" || savedInvoice || showHeldBillsModal) {
+        return;
+      }
+
+      if (e.key === "F2") {
+        e.preventDefault();
+        const searchInput = document.getElementById("product-search-input");
+        if (searchInput) {
+          searchInput.focus();
+          searchInput.select();
+        }
+      } else if (e.key === "F4") {
+        e.preventDefault();
+        if (billItems.length > 0) {
+          handleHoldBill();
+        }
+      } else if (e.key === "F8" || (e.ctrlKey && e.key === "Enter")) {
+        e.preventDefault();
+        if (billItems.length > 0) {
+          handleSaveCurrentBill();
+        }
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [currentPage, savedInvoice, showHeldBillsModal, billItems, selectedCustomer, additionalDiscount, subtotal]);
 
   return (
     <div className="flex h-screen bg-slate-100 text-slate-900">
@@ -522,6 +590,7 @@ function App() {
               <ProductSearch
                 search={search}
                 setSearch={setSearch}
+                products={products}
                 filteredProducts={filteredProducts}
                 addProduct={(product) => {
                   addProduct(product);
@@ -530,22 +599,29 @@ function App() {
               />
 
               {/* Current bill */}
-              <section className="flex w-[560px] flex-col rounded-xl border border-slate-200 bg-white shadow-xs">
-                <div className="border-b border-slate-200 p-4">
+              <section className="flex w-[420px] md:w-[440px] lg:w-[480px] xl:w-[500px] shrink-0 flex-col rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
+                <div className="border-b border-slate-200 p-3.5">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="font-semibold">Current Bill</h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-bold text-sm text-slate-900">Current Bill</h3>
+                        {billItems.length > 0 && (
+                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                            {billItems.length} item{billItems.length === 1 ? "" : "s"}
+                          </span>
+                        )}
+                      </div>
                       {billSaved && (
-                        <div className="mt-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-xs font-medium text-green-700">
+                        <div className="mt-2 rounded-lg border border-green-200 bg-green-50 px-2.5 py-1 text-xs font-medium text-green-700">
                           Bill saved successfully.
                         </div>
                       )}
                       {billNotice && (
-                        <div className="mt-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700">
+                        <div className="mt-2 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
                           {billNotice}
                         </div>
                       )}
-                      <p className="mt-1 text-xs text-slate-500">
+                      <p className="mt-0.5 text-[11px] text-slate-400">
                         {selectedCustomer?.name || "Walk-in Customer"}
                       </p>
                     </div>
@@ -573,25 +649,12 @@ function App() {
                   saveError={billSaveError}
                   onDismissSaveError={() => setBillSaveError("")}
                   hasItems={billItems.length > 0}
+                  totalItemsCount={totalItemsCount}
                   heldCount={heldBills.length}
                   onHoldBill={handleHoldBill}
+                  onClearBill={handleClearBill}
                   onViewHeldBills={() => setShowHeldBillsModal(true)}
-                  onSaveBill={async () => {
-                    try {
-                      const invoice = await saveBill(selectedCustomer);
-                      await loadProducts();
-                      setBillSaveError("");
-                      setSavedInvoice(invoice);
-                      setInvoicePreviewSource("billing");
-                    } catch (error) {
-                      console.error("Failed to save bill:", error);
-                      setBillSaveError(error?.message || String(error));
-
-                      setTimeout(() => {
-                        setBillSaveError("");
-                      }, 5000);
-                    }
-                  }}
+                  onSaveBill={handleSaveCurrentBill}
                 />
               </section>
             </div>

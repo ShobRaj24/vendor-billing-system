@@ -8,79 +8,126 @@ function BillSummary({
   onDismissSaveError,
   onSaveBill,
   onHoldBill,
+  onClearBill,
   heldCount = 0,
   onViewHeldBills,
   hasItems = false,
+  totalItemsCount = 0,
 }) {
-  const finalAmount = subtotal - Number(additionalDiscount || 0);
+  const finalAmount = Math.max(0, subtotal - Number(additionalDiscount || 0));
 
   return (
-    <div className="border-t border-slate-200 p-4">
-      <div className="space-y-2 text-sm">
-        <div className="flex justify-between">
-          <span className="text-slate-500">Total MRP</span>
-          <span>₹{totalMrp.toFixed(2)}</span>
+    <div className="border-t border-slate-200 bg-white p-3.5 space-y-3">
+      {/* Subtotal & Discount Breakdown */}
+      <div className="space-y-1.5 text-xs">
+        <div className="flex justify-between text-slate-500">
+          <span>Items Total</span>
+          <span className="font-medium text-slate-700">₹{subtotal.toFixed(2)}</span>
         </div>
 
-        <div className="flex justify-between">
-          <span className="text-slate-500">Product Discount</span>
-          <span>₹{productDiscount.toFixed(2)}</span>
-        </div>
+        {totalMrp > subtotal && (
+          <div className="flex justify-between text-slate-500">
+            <span>Product Savings</span>
+            <span className="font-medium text-emerald-600">
+              - ₹{productDiscount.toFixed(2)}
+            </span>
+          </div>
+        )}
 
-        <div className="flex items-center justify-between gap-4">
-          <span className="text-slate-500">Additional Discount</span>
-
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            value={additionalDiscount}
-            onChange={(event) => setAdditionalDiscount(event.target.value)}
-            className="w-28 rounded-lg border border-slate-300 px-3 py-2 text-right"
-          />
-        </div>
-
-        <div className="flex justify-between border-t border-slate-200 pt-3 text-base font-semibold">
-          <span>Final Amount</span>
-          <span>₹{finalAmount.toFixed(2)}</span>
+        <div className="flex items-center justify-between gap-3 pt-0.5">
+          <span className="text-slate-500">Extra Discount</span>
+          <div className="relative flex items-center">
+            <span className="absolute left-2 text-[11px] text-slate-400">₹</span>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="0.00"
+              value={additionalDiscount}
+              onChange={(event) => setAdditionalDiscount(event.target.value)}
+              className="w-24 rounded-lg border border-slate-300 py-1 pl-5 pr-2 text-right text-xs font-semibold text-slate-800 outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-400"
+            />
+          </div>
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-2">
+      {/* High-Impact Total Payable Banner */}
+      <div className="flex items-center justify-between rounded-xl bg-slate-950 px-4 py-3 text-white shadow-xs">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            Total Payable
+          </p>
+          <p className="text-[11px] text-slate-400">
+            {totalItemsCount} {totalItemsCount === 1 ? "unit" : "units"}
+          </p>
+        </div>
+
+        <div className="text-right">
+          <p className="text-2xl font-black tracking-tight text-emerald-400">
+            ₹{finalAmount.toFixed(2)}
+          </p>
+        </div>
+      </div>
+
+      {/* Primary Action Buttons */}
+      <div className="grid grid-cols-2 gap-2">
         <button
           type="button"
           onClick={onHoldBill}
           disabled={!hasItems}
-          className="rounded-lg border border-slate-300 px-4 py-3 font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+          title="Place this bill on hold (F4)"
+          className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-xs font-bold text-slate-700 shadow-2xs transition-all hover:bg-slate-50 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
         >
-          Hold Bill
+          <span>⏸ Hold</span>
+          <span className="rounded bg-slate-100 px-1 py-0.2 text-[9px] font-mono text-slate-400">
+            F4
+          </span>
         </button>
 
         <button
           type="button"
           onClick={onSaveBill}
           disabled={!hasItems}
-          className="rounded-lg bg-slate-900 px-4 py-3 font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+          title="Save and process invoice (F8 or Ctrl+Enter)"
+          className="flex items-center justify-center gap-1.5 rounded-xl bg-slate-900 px-3 py-2.5 text-xs font-bold text-white shadow-xs transition-all hover:bg-slate-800 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
         >
-          Save Bill
+          <span>💾 Save Bill</span>
+          <span className="rounded bg-slate-800 px-1 py-0.2 text-[9px] font-mono text-slate-300">
+            F8
+          </span>
         </button>
       </div>
 
-      {heldCount > 0 && (
-        <button
-          type="button"
-          onClick={onViewHeldBills}
-          className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-100"
-        >
-          <span>⏸ {heldCount} Bill{heldCount === 1 ? "" : "s"} on Hold</span>
-          <span className="underline">View & Resume →</span>
-        </button>
-      )}
+      {/* Secondary Helper Row: Clear Bill & Held Bills Indicator */}
+      <div className="flex items-center justify-between gap-2 pt-0.5">
+        {hasItems ? (
+          <button
+            type="button"
+            onClick={onClearBill}
+            className="text-[11px] font-medium text-slate-400 hover:text-red-600 transition-colors"
+          >
+            Clear current bill
+          </button>
+        ) : (
+          <span />
+        )}
+
+        {heldCount > 0 && (
+          <button
+            type="button"
+            onClick={onViewHeldBills}
+            className="flex items-center gap-1 text-[11px] font-semibold text-amber-700 hover:text-amber-800 hover:underline transition-colors"
+          >
+            <span>⏸ {heldCount} on hold</span>
+            <span>→</span>
+          </button>
+        )}
+      </div>
 
       {saveError && (
         <div
           role="alert"
-          className="mt-3 flex items-start justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+          className="flex items-start justify-between gap-2 rounded-xl border border-red-200 bg-red-50 p-2.5 text-xs text-red-700"
         >
           <span>{saveError}</span>
           <button
