@@ -1079,6 +1079,7 @@ const defaultSettings = {
   defaultPrintFormat: "A4",
   currencySymbol: "₹",
   enableInventory: false,
+  setupCompleted: false,
 };
 
 function getSettingsPath() {
@@ -1136,6 +1137,7 @@ function writeSettings(newSettings) {
         ? newSettings.currencySymbol.trim()
         : defaultSettings.currencySymbol,
     enableInventory: Boolean(newSettings.enableInventory),
+    setupCompleted: Boolean(newSettings.setupCompleted),
   };
 
   fs.writeFileSync(settingsPath, JSON.stringify(merged, null, 2), "utf8");

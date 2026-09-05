@@ -14,6 +14,7 @@ import SettingsPage from "./components/SettingsPage";
 import HeldBillsModal from "./components/HeldBillsModal";
 import DashboardPage from "./components/DashboardPage";
 import PurchasesPage from "./components/PurchasesPage";
+import OnboardingModal from "./components/OnboardingModal";
 
 function App() {
   const [search, setSearch] = useState("");
@@ -83,6 +84,21 @@ function App() {
     }
     loadSettings();
   }, []);
+
+  async function handleSelectOnboardingMode(mode) {
+    const isFull = mode === "full";
+    const updated = {
+      ...(settings || {}),
+      enableInventory: isFull,
+      setupCompleted: true,
+    };
+    try {
+      const saved = await window.api.settings.save(updated);
+      setSettings(saved);
+    } catch (err) {
+      console.error("Failed to save onboarding mode:", err);
+    }
+  }
 
   function saveHeldBills(updated) {
     setHeldBills(updated);
@@ -681,6 +697,12 @@ function App() {
         onResumeWithDiscard={handleResumeWithDiscard}
         onDiscard={handleDiscardHeldBill}
         onClearAll={handleClearAllHeldBills}
+      />
+
+      {/* First-Time Welcome & Mode Selection Modal */}
+      <OnboardingModal
+        isOpen={settings !== null && settings.setupCompleted !== true}
+        onSelectMode={handleSelectOnboardingMode}
       />
     </div>
   );
