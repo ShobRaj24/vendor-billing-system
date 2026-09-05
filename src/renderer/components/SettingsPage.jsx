@@ -11,6 +11,7 @@ const defaultSettings = {
   receiptFooter: "Thank you for your business. Please visit again.",
   defaultPrintFormat: "A4",
   currencySymbol: "₹",
+  enableInventory: false,
 };
 
 function SettingsPage({ onSettingsSaved }) {
@@ -339,6 +340,60 @@ function SettingsPage({ onSettingsSaved }) {
                   placeholder="e.g. Thank you for your business. Visit again!"
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
                 />
+              </div>
+            </div>
+          </section>
+
+          {/* Add-ons & Optional Modules */}
+          <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="text-base font-semibold text-slate-900">
+                  Add-ons & Optional Modules
+                </h3>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  Enable or disable advanced business features to keep your interface clean and simple.
+                </p>
+              </div>
+              <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-semibold text-slate-600">
+                Plug-in System
+              </span>
+            </div>
+
+            <div className="mt-4 divide-y divide-slate-100">
+              <div className="flex items-center justify-between py-3">
+                <div className="pr-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">📦</span>
+                    <h4 className="text-sm font-semibold text-slate-900">
+                      Inventory & Supplier Purchases
+                    </h4>
+                    <span
+                      className={`rounded-full px-2 py-0.2 text-[9px] font-bold ${
+                        settings.enableInventory
+                          ? "bg-emerald-100 text-emerald-800"
+                          : "bg-slate-100 text-slate-500"
+                      }`}
+                    >
+                      {settings.enableInventory ? "ENABLED" : "OFF (DEFAULT)"}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Track live warehouse/store stock levels, receive inward supplier bills, adjust stock, and view low-stock alerts. When turned off, the app operates as a lightweight, lightning-fast POS billing system.
+                  </p>
+                </div>
+
+                <label className="relative inline-flex cursor-pointer items-center shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(settings.enableInventory)}
+                    onChange={(e) =>
+                      updateField("enableInventory", e.target.checked)
+                    }
+                    className="sr-only peer"
+                  />
+                  <div className="h-6 w-11 rounded-full bg-slate-200 peer-checked:bg-slate-900 peer-focus:outline-none after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-white"></div>
+                </label>
               </div>
             </div>
           </section>

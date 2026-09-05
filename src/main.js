@@ -715,17 +715,20 @@ ipcMain.handle("invoices:create", async (_event, invoice) => {
     },
   });
 
-  // Automatically deduct stock for tracked products
-  const updateStockStmt = sqliteDb.prepare(`
-    UPDATE Product SET stockQuantity = COALESCE(stockQuantity, 0) - ?, updatedAt = datetime('now')
-    WHERE id = ? AND trackStock = 1
-  `);
+  // Automatically deduct stock for tracked products only if inventory module is enabled
+  const currentSettings = readSettings();
+  if (currentSettings.enableInventory) {
+    const updateStockStmt = sqliteDb.prepare(`
+      UPDATE Product SET stockQuantity = COALESCE(stockQuantity, 0) - ?, updatedAt = datetime('now')
+      WHERE id = ? AND trackStock = 1
+    `);
 
-  for (const item of validInvoice.items) {
-    try {
-      updateStockStmt.run(item.quantity, item.productId);
-    } catch (err) {
-      console.warn(`Could not deduct stock for product #${item.productId}:`, err);
+    for (const item of validInvoice.items) {
+      try {
+        updateStockStmt.run(item.quantity, item.productId);
+      } catch (err) {
+        console.warn(`Could not deduct stock for product #${item.productId}:`, err);
+      }
     }
   }
 
@@ -1075,6 +1078,7 @@ const defaultSettings = {
   receiptFooter: "Thank you for your business. Please visit again.",
   defaultPrintFormat: "A4",
   currencySymbol: "₹",
+  enableInventory: false,
 };
 
 function getSettingsPath() {
@@ -1131,6 +1135,7 @@ function writeSettings(newSettings) {
       newSettings.currencySymbol.trim()
         ? newSettings.currencySymbol.trim()
         : defaultSettings.currencySymbol,
+    enableInventory: Boolean(newSettings.enableInventory),
   };
 
   fs.writeFileSync(settingsPath, JSON.stringify(merged, null, 2), "utf8");

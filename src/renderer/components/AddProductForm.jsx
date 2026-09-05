@@ -7,6 +7,7 @@ function AddProductForm({
   onDismissError,
   onCancel,
   editMode = false,
+  isInventoryEnabled = false,
 }) {
   return (
     <div className="mt-4 rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
@@ -119,42 +120,46 @@ function AddProductForm({
         </div>
 
         {/* Stock tracking fields */}
-        <div>
-          <label className="mb-1 block font-medium text-slate-700">Current Stock</label>
-          <input
-            type="number"
-            step="any"
-            value={newProduct.stockQuantity ?? 0}
-            onChange={(e) => updateNewProduct("stockQuantity", e.target.value)}
-            placeholder="Current Stock Quantity"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-slate-500"
-          />
-        </div>
+        {isInventoryEnabled && (
+          <>
+            <div>
+              <label className="mb-1 block font-medium text-slate-700">Current Stock</label>
+              <input
+                type="number"
+                step="any"
+                value={newProduct.stockQuantity ?? 0}
+                onChange={(e) => updateNewProduct("stockQuantity", e.target.value)}
+                placeholder="Current Stock Quantity"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-slate-500"
+              />
+            </div>
 
-        <div>
-          <label className="mb-1 block font-medium text-slate-700">Low Stock Alert Level</label>
-          <input
-            type="number"
-            step="any"
-            value={newProduct.lowStockAlert ?? 5}
-            onChange={(e) => updateNewProduct("lowStockAlert", e.target.value)}
-            placeholder="Alert when stock falls below"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-slate-500"
-          />
-        </div>
+            <div>
+              <label className="mb-1 block font-medium text-slate-700">Low Stock Alert Level</label>
+              <input
+                type="number"
+                step="any"
+                value={newProduct.lowStockAlert ?? 5}
+                onChange={(e) => updateNewProduct("lowStockAlert", e.target.value)}
+                placeholder="Alert when stock falls below"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-slate-500"
+              />
+            </div>
 
-        <div className="flex items-center gap-2 pt-5">
-          <input
-            type="checkbox"
-            id="trackStockCheckbox"
-            checked={newProduct.trackStock !== false}
-            onChange={(e) => updateNewProduct("trackStock", e.target.checked)}
-            className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-500"
-          />
-          <label htmlFor="trackStockCheckbox" className="font-medium text-slate-700 cursor-pointer">
-            Track inventory for this product
-          </label>
-        </div>
+            <div className="flex items-center gap-2 pt-5">
+              <input
+                type="checkbox"
+                id="trackStockCheckbox"
+                checked={newProduct.trackStock !== false}
+                onChange={(e) => updateNewProduct("trackStock", e.target.checked)}
+                className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-500"
+              />
+              <label htmlFor="trackStockCheckbox" className="font-medium text-slate-700 cursor-pointer">
+                Track inventory for this product
+              </label>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="mt-5 flex gap-2 border-t border-slate-100 pt-3">

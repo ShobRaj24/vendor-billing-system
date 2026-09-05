@@ -1,6 +1,12 @@
 import { useState } from "react";
 
-function BillItems({ billItems, updatePrice, updateQuantity, removeItem }) {
+function BillItems({
+  billItems,
+  updatePrice,
+  updateQuantity,
+  removeItem,
+  isInventoryEnabled = false,
+}) {
   const [itemPendingRemoval, setItemPendingRemoval] = useState(null);
   const [quantityDrafts, setQuantityDrafts] = useState({});
   const [priceDrafts, setPriceDrafts] = useState({});
@@ -174,19 +180,21 @@ function BillItems({ billItems, updatePrice, updateQuantity, removeItem }) {
                         </span>
                       )}
 
-                      {exceedsStock ? (
-                        <span className="font-semibold text-amber-700">
-                          ⚠️ Exceeds ({item.stockQuantity} avail)
-                        </span>
-                      ) : isOutOfStock ? (
-                        <span className="font-semibold text-red-600">
-                          ⚠️ Out of stock
-                        </span>
-                      ) : hasStockIssue ? (
-                        <span className="text-slate-400">
-                          Stock: {item.stockQuantity}
-                        </span>
-                      ) : null}
+                      {isInventoryEnabled && (
+                        exceedsStock ? (
+                          <span className="font-semibold text-amber-700">
+                            ⚠️ Exceeds ({item.stockQuantity} avail)
+                          </span>
+                        ) : isOutOfStock ? (
+                          <span className="font-semibold text-red-600">
+                            ⚠️ Out of stock
+                          </span>
+                        ) : hasStockIssue ? (
+                          <span className="text-slate-400">
+                            Stock: {item.stockQuantity}
+                          </span>
+                        ) : null
+                      )}
                     </div>
                   </div>
 

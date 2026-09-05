@@ -20,6 +20,7 @@ function ProductManagement({
   onCreateProduct,
   onUpdateProduct,
   onAdjustStock,
+  isInventoryEnabled = false,
 }) {
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [newProductDraft, setNewProductDraft] = useState(emptyProduct);
@@ -59,6 +60,7 @@ function ProductManagement({
 
     try {
       await onCreateProduct(newProductDraft);
+      setShowAddProduct(false);
       setNewProductDraft(emptyProduct);
       setNewProductError("");
       setProductCreated(true);
@@ -67,28 +69,24 @@ function ProductManagement({
         setProductCreated(false);
       }, 3000);
     } catch (error) {
-      console.error("Failed to save product:", error);
+      console.error("Failed to create product:", error);
       setNewProductError(error?.message || String(error));
     }
   }
 
   function startEditProduct(product) {
-    setShowAddProduct(false);
     setEditProductError("");
     setEditingProduct(product);
     setEditProductDraft({
-      name: product.name || "",
+      name: product.name,
       sku: product.sku || "",
       barcode: product.barcode || "",
       category: product.category || "",
-      unit: product.unit || "Piece",
-      mrp: product.mrp == null ? "" : String(product.mrp),
-      sellingPrice:
-        product.sellingPrice == null ? "" : String(product.sellingPrice),
-      stockQuantity:
-        product.stockQuantity == null ? "0" : String(product.stockQuantity),
-      lowStockAlert:
-        product.lowStockAlert == null ? "5" : String(product.lowStockAlert),
+      unit: product.unit,
+      mrp: product.mrp === null ? "" : String(product.mrp),
+      sellingPrice: String(product.sellingPrice),
+      stockQuantity: String(product.stockQuantity ?? 0),
+      lowStockAlert: String(product.lowStockAlert ?? 5),
       trackStock: product.trackStock !== false,
     });
   }
@@ -157,8 +155,14 @@ function ProductManagement({
     <div className="flex min-h-0 flex-1 flex-col">
       <header className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
         <div>
-          <h2 className="text-lg font-semibold">Products & Inventory</h2>
-          <p className="text-xs text-slate-500">Manage catalog pricing and stock levels</p>
+          <h2 className="text-lg font-semibold">
+            {isInventoryEnabled ? "Products & Inventory" : "Products Catalog"}
+          </h2>
+          <p className="text-xs text-slate-500">
+            {isInventoryEnabled
+              ? "Manage catalog pricing and stock levels"
+              : "Manage store catalog and selling prices"}
+          </p>
         </div>
 
         <button
@@ -182,6 +186,7 @@ function ProductManagement({
               setShowAddProduct(false);
               setNewProductError("");
             }}
+            isInventoryEnabled={isInventoryEnabled}
           />
         </div>
       )}
@@ -201,6 +206,7 @@ function ProductManagement({
               setEditProductError("");
             }}
             editMode={true}
+            isInventoryEnabled={isInventoryEnabled}
           />
         </div>
       )}
@@ -215,7 +221,9 @@ function ProductManagement({
                 <th className="px-4 py-3 text-left">Unit</th>
                 <th className="px-4 py-3 text-right">MRP</th>
                 <th className="px-4 py-3 text-right">Selling Price</th>
-                <th className="px-4 py-3 text-center">Stock Level</th>
+                {isInventoryEnabled && (
+                  <th className="px-4 py-3 text-center">Stock Level</th>
+                )}
                 <th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
@@ -258,26 +266,28 @@ function ProductManagement({
                     </td>
 
                     {/* Stock status badge */}
-                    <td className="px-4 py-3 text-center">
-                      {!isTracked ? (
-                        <span className="text-slate-400">Untracked</span>
-                      ) : isOutOfStock ? (
-                        <span className="inline-block rounded-full bg-red-100 px-2.5 py-0.5 text-[10px] font-bold text-red-700">
-                          Out of stock ({stock})
-                        </span>
-                      ) : isLowStock ? (
-                        <span className="inline-block rounded-full bg-amber-100 px-2.5 py-0.5 text-[10px] font-bold text-amber-800">
-                          Low: {stock} {product.unit}
-                        </span>
-                      ) : (
-                        <span className="inline-block rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800">
-                          {stock} {product.unit}
-                        </span>
-                      )}
-                    </td>
+                    {isInventoryEnabled && (
+                      <td className="px-4 py-3 text-center">
+                        {!isTracked ? (
+                          <span className="text-slate-400">Untracked</span>
+                        ) : isOutOfStock ? (
+                          <span className="inline-block rounded-full bg-red-100 px-2.5 py-0.5 text-[10px] font-bold text-red-700">
+                            Out of stock ({stock})
+                          </span>
+                        ) : isLowStock ? (
+                          <span className="inline-block rounded-full bg-amber-100 px-2.5 py-0.5 text-[10px] font-bold text-amber-800">
+                            Low: {stock} {product.unit}
+                          </span>
+                        ) : (
+                          <span className="inline-block rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800">
+                            {stock} {product.unit}
+                          </span>
+                        )}
+                      </td>
+                    )}
 
                     <td className="px-4 py-3 text-right">
-                      {isTracked && (
+                      {isInventoryEnabled && isTracked && (
                         <button
                           onClick={() => {
                             setAdjustingProduct(product);

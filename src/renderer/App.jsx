@@ -59,6 +59,7 @@ function App() {
 
   // Settings state
   const [settings, setSettings] = useState(null);
+  const isInventoryEnabled = Boolean(settings?.enableInventory);
 
   // Held bills state
   const [heldBills, setHeldBills] = useState(() => {
@@ -408,18 +409,20 @@ function App() {
                 : "hover:bg-slate-100"
             }`}
           >
-            📦 Products & Stock
+            {isInventoryEnabled ? "📦 Products & Stock" : "📦 Products"}
           </button>
-          <button
-            onClick={() => setCurrentPage("purchases")}
-            className={`mb-1 w-full rounded-lg px-4 py-3 text-left text-sm ${
-              currentPage === "purchases"
-                ? "bg-slate-900 font-medium text-white"
-                : "hover:bg-slate-100"
-            }`}
-          >
-            🛒 Purchases
-          </button>
+          {isInventoryEnabled && (
+            <button
+              onClick={() => setCurrentPage("purchases")}
+              className={`mb-1 w-full rounded-lg px-4 py-3 text-left text-sm ${
+                currentPage === "purchases"
+                  ? "bg-slate-900 font-medium text-white"
+                  : "hover:bg-slate-100"
+              }`}
+            >
+              🛒 Purchases
+            </button>
+          )}
           <button
             onClick={() => setCurrentPage("invoices")}
             className={`mb-1 w-full rounded-lg px-4 py-3 text-left text-sm ${
@@ -491,6 +494,7 @@ function App() {
           />
         ) : currentPage === "dashboard" ? (
           <DashboardPage
+            isInventoryEnabled={isInventoryEnabled}
             onNavigate={(page) => setCurrentPage(page)}
             onInwardProduct={(product) => {
               setInwardInitialProduct(product);
@@ -501,7 +505,7 @@ function App() {
               setInvoicePreviewSource("dashboard");
             }}
           />
-        ) : currentPage === "purchases" ? (
+        ) : currentPage === "purchases" && isInventoryEnabled ? (
           <PurchasesPage
             products={products}
             onProductStockUpdated={loadProducts}
@@ -533,6 +537,7 @@ function App() {
         ) : currentPage === "products" ? (
           <ProductManagement
             products={products}
+            isInventoryEnabled={isInventoryEnabled}
             onCreateProduct={createProductFromProductsPage}
             onUpdateProduct={updateProductFromProductsPage}
             onAdjustStock={handleAdjustStock}
@@ -581,6 +586,7 @@ function App() {
                   onDismissError={() => setProductSaveError("")}
                   onCancel={() => setShowAddProduct(false)}
                   editMode={false}
+                  isInventoryEnabled={isInventoryEnabled}
                 />
               </div>
             )}
@@ -592,6 +598,7 @@ function App() {
                 setSearch={setSearch}
                 products={products}
                 filteredProducts={filteredProducts}
+                isInventoryEnabled={isInventoryEnabled}
                 addProduct={(product) => {
                   addProduct(product);
                   setSearch("");
@@ -638,6 +645,7 @@ function App() {
                   updatePrice={updatePrice}
                   updateQuantity={updateQuantity}
                   removeItem={removeItem}
+                  isInventoryEnabled={isInventoryEnabled}
                 />
 
                 <BillSummary

@@ -1,6 +1,13 @@
 import { useMemo, useState } from "react";
 
-function ProductSearch({ search, setSearch, products = [], filteredProducts = [], addProduct }) {
+function ProductSearch({
+  search,
+  setSearch,
+  products = [],
+  filteredProducts = [],
+  addProduct,
+  isInventoryEnabled = false,
+}) {
   const [viewMode, setViewMode] = useState(() => {
     try {
       return localStorage.getItem("pos_catalog_view") || "grid";
@@ -201,21 +208,23 @@ function ProductSearch({ search, setSearch, products = [], filteredProducts = []
                   {/* Bottom: Stock Status & Price */}
                   <div className="mt-3 flex items-end justify-between border-t border-slate-100 pt-2">
                     <div>
-                      {isTracked ? (
-                        <span
-                          className={`inline-block rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${
-                            isOut
-                              ? "bg-red-50 text-red-700 border border-red-200"
-                              : isLow
-                                ? "bg-amber-50 text-amber-800 border border-amber-200"
-                                : "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                          }`}
-                        >
-                          {isOut ? "Out of stock" : isLow ? `Low: ${stock}` : `Stock: ${stock}`}
-                        </span>
-                      ) : (
-                        <span className="text-[10px] text-slate-400">Unlimited</span>
-                      )}
+                      {isInventoryEnabled ? (
+                        isTracked ? (
+                          <span
+                            className={`inline-block rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${
+                              isOut
+                                ? "bg-red-50 text-red-700 border border-red-200"
+                                : isLow
+                                  ? "bg-amber-50 text-amber-800 border border-amber-200"
+                                  : "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                            }`}
+                          >
+                            {isOut ? "Out of stock" : isLow ? `Low: ${stock}` : `Stock: ${stock}`}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-slate-400">Unlimited</span>
+                        )
+                      ) : null}
                     </div>
 
                     <div className="text-right">
@@ -241,7 +250,9 @@ function ProductSearch({ search, setSearch, products = [], filteredProducts = []
                 <tr>
                   <th className="px-3 py-2 text-left">Product</th>
                   <th className="px-3 py-2 text-left">Category</th>
-                  <th className="px-3 py-2 text-center">Stock</th>
+                  {isInventoryEnabled && (
+                    <th className="px-3 py-2 text-center">Stock</th>
+                  )}
                   <th className="px-3 py-2 text-right">Price</th>
                   <th className="px-3 py-2 text-right">Action</th>
                 </tr>
@@ -271,23 +282,25 @@ function ProductSearch({ search, setSearch, products = [], filteredProducts = []
                         {product.category || "General"}
                       </td>
 
-                      <td className="px-3 py-2 text-center">
-                        {isTracked ? (
-                          <span
-                            className={`inline-block rounded-md px-2 py-0.5 text-[10px] font-semibold ${
-                              isOut
-                                ? "bg-red-50 text-red-700"
-                                : isLow
-                                  ? "bg-amber-50 text-amber-800"
-                                  : "bg-emerald-50 text-emerald-800"
-                            }`}
-                          >
-                            {stock} {product.unit}
-                          </span>
-                        ) : (
-                          <span className="text-slate-400 text-[10px]">—</span>
-                        )}
-                      </td>
+                      {isInventoryEnabled && (
+                        <td className="px-3 py-2 text-center">
+                          {isTracked ? (
+                            <span
+                              className={`inline-block rounded-md px-2 py-0.5 text-[10px] font-semibold ${
+                                isOut
+                                  ? "bg-red-50 text-red-700"
+                                  : isLow
+                                    ? "bg-amber-50 text-amber-800"
+                                    : "bg-emerald-50 text-emerald-800"
+                              }`}
+                            >
+                              {stock} {product.unit}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 text-[10px]">—</span>
+                          )}
+                        </td>
+                      )}
 
                       <td className="px-3 py-2 text-right">
                         {product.mrp !== null && Number(product.mrp) > Number(product.sellingPrice) && (
