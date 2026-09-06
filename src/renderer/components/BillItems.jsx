@@ -6,10 +6,14 @@ function BillItems({
   updateQuantity,
   removeItem,
   isInventoryEnabled = false,
+  catalogProducts = [],
+  onUpdateCatalogPrice,
 }) {
   const [itemPendingRemoval, setItemPendingRemoval] = useState(null);
   const [quantityDrafts, setQuantityDrafts] = useState({});
   const [priceDrafts, setPriceDrafts] = useState({});
+  const [syncedIds, setSyncedIds] = useState({});
+  const [syncingIds, setSyncingIds] = useState({});
 
   function clearQuantityDraft(productId) {
     setQuantityDrafts((current) => {
@@ -135,8 +139,9 @@ function BillItems({
           {/* Compact Table Header */}
           <div className="flex items-center border-b border-slate-200 bg-slate-50/80 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
             <span className="flex-1">Item</span>
-            <span className="w-16 text-right">Price</span>
-            <span className="w-24 text-center">Qty</span>
+            <span className="w-16 text-right">MRP</span>
+            <span className="w-16 text-right">Rate</span>
+            <span className="w-22 text-center">Qty</span>
             <span className="w-18 text-right">Total</span>
             <span className="w-6 text-center"></span>
           </div>
@@ -151,6 +156,25 @@ function BillItems({
                 item.stockQuantity !== null;
               const exceedsStock = hasStockIssue && item.quantity > item.stockQuantity;
               const isOutOfStock = hasStockIssue && item.stockQuantity <= 0;
+
+              const catalogProduct = catalogProducts?.find(
+                (p) => p.id === item.productId,
+              );
+              const catalogMrp =
+                catalogProduct?.mrp !== null &&
+                catalogProduct?.mrp !== undefined &&
+                catalogProduct?.mrp !== ""
+                  ? Number(catalogProduct.mrp)
+                  : null;
+              const itemMrp =
+                item.mrp !== null && item.mrp !== undefined && item.mrp !== ""
+                  ? Number(item.mrp)
+                  : null;
+              const isMrpDifferent = catalogProduct && itemMrp !== catalogMrp;
+              const isRateDifferent =
+                catalogProduct &&
+                Number(item.sellingPrice) !== Number(catalogProduct.sellingPrice);
+              const hasCatalogDiff = isMrpDifferent || isRateDifferent;
 
               return (
                 <div
@@ -174,14 +198,73 @@ function BillItems({
                     </div>
 
                     <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[10px]">
-                      {item.mrp !== null && Number(item.mrp) > Number(item.sellingPrice) && (
-                        <span className="text-slate-400 line-through">
-                          ₹{Number(item.mrp).toFixed(2)}
-                        </span>
+                      {item.mrp !== null &&
+                        Number(item.mrp) > Number(item.sellingPrice) && (
+                          <span className="font-medium text-emerald-600">
+                            ₹{(Number(item.mrp) - Number(item.sellingPrice)).toFixed(2)} off
+                          </span>
+                        )}
+
+                      {item.mrp !== null &&
+                        Number(item.mrp) > 0 &&
+                        Number(item.sellingPrice) > Number(item.mrp) && (
+                          <span
+                            className="font-semibold text-amber-600"
+                            title="Selling rate exceeds MRP"
+                          >
+                            ⚠️ Rate &gt; MRP
+                          </span>
+                        )}
+
+                      {hasCatalogDiff && onUpdateCatalogPrice && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              setSyncingIds((prev) => ({
+                                ...prev,
+                                [item.productId]: true,
+                              }));
+                              await onUpdateCatalogPrice(
+                                item.productId,
+                                item.mrp,
+                                item.sellingPrice,
+                              );
+                              setSyncedIds((prev) => ({
+                                ...prev,
+                                [item.productId]: true,
+                              }));
+                              setTimeout(() => {
+                                setSyncedIds((prev) => ({
+                                  ...prev,
+                                  [item.productId]: false,
+                                }));
+                              }, 2500);
+                            } finally {
+                              setSyncingIds((prev) => ({
+                                ...prev,
+                                [item.productId]: false,
+                              }));
+                            }
+                          }}
+                          disabled={syncingIds[item.productId]}
+                          title="Save this edited MRP/Rate to the product catalog"
+                          className="inline-flex items-center gap-0.5 rounded border border-blue-200 bg-blue-50 px-1.5 py-0.2 text-[9px] font-medium text-blue-700 hover:bg-blue-100 transition-colors"
+                        >
+                          {syncedIds[item.productId] ? (
+                            <span className="font-semibold text-emerald-700">
+                              ✓ Saved to catalog
+                            </span>
+                          ) : syncingIds[item.productId] ? (
+                            <span>Saving...</span>
+                          ) : (
+                            <span>🔄 Update catalog</span>
+                          )}
+                        </button>
                       )}
 
-                      {isInventoryEnabled && (
-                        exceedsStock ? (
+                      {isInventoryEnabled &&
+                        (exceedsStock ? (
                           <span className="font-semibold text-amber-700">
                             ⚠️ Exceeds ({item.stockQuantity} avail)
                           </span>
@@ -193,15 +276,39 @@ function BillItems({
                           <span className="text-slate-400">
                             Stock: {item.stockQuantity}
                           </span>
-                        ) : null
-                      )}
+                        ) : null)}
                     </div>
                   </div>
 
-                  {/* Inline Editable Selling Price */}
+                  {/* Inline Editable MRP */}
                   <div className="w-16 shrink-0 text-right">
                     <div className="inline-flex items-center justify-end">
-                      <span className="text-[10px] text-slate-400 mr-0.5">₹</span>
+                      <span className="mr-0.5 text-[10px] text-slate-400">₹</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="—"
+                        value={
+                          priceDrafts[getPriceDraftKey(item.productId, "mrp")] ??
+                          (item.mrp !== null && item.mrp !== undefined
+                            ? item.mrp
+                            : "")
+                        }
+                        onChange={(event) =>
+                          handlePriceChange(item, "mrp", event.target.value)
+                        }
+                        onBlur={() => clearPriceDraft(item.productId, "mrp")}
+                        title="Click to edit item MRP"
+                        className="w-12 rounded border border-transparent bg-transparent py-0.5 text-right text-xs font-medium text-slate-500 hover:border-slate-300 focus:border-slate-500 focus:bg-white focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Inline Editable Selling Rate */}
+                  <div className="w-16 shrink-0 text-right">
+                    <div className="inline-flex items-center justify-end">
+                      <span className="mr-0.5 text-[10px] text-slate-400">₹</span>
                       <input
                         type="number"
                         min="0"
@@ -221,20 +328,20 @@ function BillItems({
                         onBlur={() =>
                           clearPriceDraft(item.productId, "sellingPrice")
                         }
-                        title="Click to edit item price"
-                        className="w-12 rounded border border-transparent bg-transparent py-0.5 text-right text-xs font-medium text-slate-800 hover:border-slate-300 focus:border-slate-500 focus:bg-white focus:outline-none"
+                        title="Click to edit selling rate"
+                        className="w-12 rounded border border-transparent bg-transparent py-0.5 text-right text-xs font-semibold text-slate-800 hover:border-slate-300 focus:border-slate-500 focus:bg-white focus:outline-none"
                       />
                     </div>
                   </div>
 
                   {/* Quantity Stepper [-] [ Qty ] [+] */}
-                  <div className="w-24 shrink-0 px-1">
+                  <div className="w-22 shrink-0 px-0.5">
                     <div className="flex items-center justify-center rounded-lg border border-slate-200 bg-white shadow-2xs">
                       <button
                         type="button"
                         onClick={() => handleStepQuantity(item, -1)}
                         title="Decrease quantity"
-                        className="flex h-6 w-6 items-center justify-center text-xs font-bold text-slate-500 hover:bg-slate-100 hover:text-slate-900 rounded-l-md transition-colors"
+                        className="flex h-6 w-5 items-center justify-center rounded-l-md text-xs font-bold text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
                       >
                         -
                       </button>
@@ -252,14 +359,14 @@ function BillItems({
                           handleQuantityChange(item, event.target.value)
                         }
                         onBlur={() => clearQuantityDraft(item.productId)}
-                        className="h-6 w-10 border-x border-slate-200 bg-transparent text-center text-xs font-bold text-slate-800 focus:bg-white focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        className="h-6 w-9 border-x border-slate-200 bg-transparent text-center text-xs font-bold text-slate-800 focus:bg-white focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       />
 
                       <button
                         type="button"
                         onClick={() => handleStepQuantity(item, 1)}
                         title="Increase quantity"
-                        className="flex h-6 w-6 items-center justify-center text-xs font-bold text-slate-500 hover:bg-slate-100 hover:text-slate-900 rounded-r-md transition-colors"
+                        className="flex h-6 w-5 items-center justify-center rounded-r-md text-xs font-bold text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
                       >
                         +
                       </button>

@@ -31,14 +31,22 @@ export function useBilling() {
         ];
       }
 
+      const initialMrp =
+        product.mrp !== null &&
+        product.mrp !== undefined &&
+        product.mrp !== "" &&
+        Number(product.mrp) > 0
+          ? Number(product.mrp)
+          : Number(product.sellingPrice);
+
       return [
         {
           productId: product.id,
           name: product.name,
           unit: product.unit,
           quantity: 1,
-          mrp: product.mrp,
-          sellingPrice: product.sellingPrice,
+          mrp: initialMrp,
+          sellingPrice: Number(product.sellingPrice),
           stockQuantity: product.stockQuantity,
           trackStock: product.trackStock,
         },

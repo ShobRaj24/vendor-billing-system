@@ -287,6 +287,25 @@ function App() {
     );
   }
 
+  async function handleUpdateProductCatalogPrice(productId, newMrp, newSellingPrice) {
+    const existing = products.find((p) => p.id === productId);
+    if (!existing) return;
+    try {
+      const updatedProduct = await window.api.products.update({
+        ...existing,
+        mrp: newMrp === "" || newMrp === null ? null : Number(newMrp),
+        sellingPrice: Number(newSellingPrice ?? existing.sellingPrice),
+      });
+      setProducts((currentProducts) =>
+        currentProducts.map((currentProduct) =>
+          currentProduct.id === updatedProduct.id ? updatedProduct : currentProduct,
+        ),
+      );
+    } catch (error) {
+      console.error("Failed to update product catalog price:", error);
+    }
+  }
+
   async function loadProducts() {
     try {
       const result = await window.api.products.list();
@@ -662,6 +681,8 @@ function App() {
                   updateQuantity={updateQuantity}
                   removeItem={removeItem}
                   isInventoryEnabled={isInventoryEnabled}
+                  catalogProducts={products}
+                  onUpdateCatalogPrice={handleUpdateProductCatalogPrice}
                 />
 
                 <BillSummary
