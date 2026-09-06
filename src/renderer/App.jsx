@@ -15,6 +15,17 @@ import HeldBillsModal from "./components/HeldBillsModal";
 import DashboardPage from "./components/DashboardPage";
 import PurchasesPage from "./components/PurchasesPage";
 import OnboardingModal from "./components/OnboardingModal";
+import {
+  IconDashboard,
+  IconReceipt,
+  IconPackage,
+  IconPurchases,
+  IconInvoices,
+  IconReports,
+  IconCustomers,
+  IconSettings,
+  IconStore,
+} from "./components/Icons";
 
 function App() {
   const [search, setSearch] = useState("");
@@ -406,101 +417,106 @@ function App() {
 
   return (
     <div className="flex h-screen bg-slate-100 text-slate-900">
-      {/* Sidebar */}
-      <aside className="flex w-56 flex-col border-r border-slate-200 bg-white">
-        <div className="border-b border-slate-200 p-5">
-          <h1 className="text-xl font-bold truncate">
-            {settings?.storeName || "Vendor Billing"}
-          </h1>
-          <p className="mt-1 text-xs text-slate-500">Billing & POS</p>
+      {/* Sleek Modern Dark Slate Sidebar */}
+      <aside className="flex w-60 flex-col border-r border-slate-800 bg-[#090D16] text-slate-300 select-none">
+        {/* Store Brand Header */}
+        <div className="border-b border-slate-800/80 p-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-500 text-white shadow-lg shadow-indigo-950/60">
+              <IconStore className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h1 className="truncate text-sm font-bold text-white tracking-tight">
+                {settings?.storeName || "Vendor Billing"}
+              </h1>
+              <div className="mt-0.5 flex items-center gap-1.5 text-[11px] font-medium text-slate-400">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
+                </span>
+                <span>POS Ready</span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <nav className="flex-1 p-3">
-          <button
-            onClick={() => setCurrentPage("dashboard")}
-            className={`mb-1 w-full rounded-lg px-4 py-3 text-left text-sm ${
-              currentPage === "dashboard"
-                ? "bg-slate-900 font-medium text-white"
-                : "hover:bg-slate-100"
-            }`}
-          >
-            📊 Dashboard
-          </button>
-          <button
-            onClick={() => setCurrentPage("billing")}
-            className={`mb-1 w-full rounded-lg px-4 py-3 text-left text-sm ${
-              currentPage === "billing"
-                ? "bg-slate-900 font-medium text-white"
-                : "hover:bg-slate-100"
-            }`}
-          >
-            🧾 New Bill
-          </button>
-          <button
-            onClick={() => setCurrentPage("products")}
-            className={`mb-1 w-full rounded-lg px-4 py-3 text-left text-sm ${
-              currentPage === "products"
-                ? "bg-slate-900 font-medium text-white"
-                : "hover:bg-slate-100"
-            }`}
-          >
-            {isInventoryEnabled ? "📦 Products & Stock" : "📦 Products"}
-          </button>
-          {isInventoryEnabled && (
-            <button
-              onClick={() => setCurrentPage("purchases")}
-              className={`mb-1 w-full rounded-lg px-4 py-3 text-left text-sm ${
-                currentPage === "purchases"
-                  ? "bg-slate-900 font-medium text-white"
-                  : "hover:bg-slate-100"
-              }`}
-            >
-              🛒 Purchases
-            </button>
-          )}
-          <button
-            onClick={() => setCurrentPage("invoices")}
-            className={`mb-1 w-full rounded-lg px-4 py-3 text-left text-sm ${
-              currentPage === "invoices"
-                ? "bg-slate-900 font-medium text-white"
-                : "hover:bg-slate-100"
-            }`}
-          >
-            📚 Invoices
-          </button>
-          <button
-            onClick={() => setCurrentPage("reports")}
-            className={`mb-1 w-full rounded-lg px-4 py-3 text-left text-sm ${
-              currentPage === "reports"
-                ? "bg-slate-900 font-medium text-white"
-                : "hover:bg-slate-100"
-            }`}
-          >
-            📈 Reports
-          </button>
-          <button
-            onClick={() => setCurrentPage("customers")}
-            className={`w-full rounded-lg px-4 py-3 text-left text-sm ${
-              currentPage === "customers"
-                ? "bg-slate-900 font-medium text-white"
-                : "hover:bg-slate-100"
-            }`}
-          >
-            👥 Customers
-          </button>
+        {/* Navigation */}
+        <nav className="flex-1 space-y-1 p-3 overflow-y-auto">
+          <div className="px-3 pb-1.5 pt-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+            Main Menu
+          </div>
+
+          {[
+            { id: "dashboard", label: "Dashboard", icon: IconDashboard },
+            { id: "billing", label: "New Bill", icon: IconReceipt, badge: "POS" },
+            {
+              id: "products",
+              label: isInventoryEnabled ? "Products & Stock" : "Products",
+              icon: IconPackage,
+            },
+            ...(isInventoryEnabled
+              ? [{ id: "purchases", label: "Purchases", icon: IconPurchases }]
+              : []),
+            { id: "invoices", label: "Invoices", icon: IconInvoices },
+            { id: "reports", label: "Reports", icon: IconReports },
+            { id: "customers", label: "Customers", icon: IconCustomers },
+          ].map((item) => {
+            const Icon = item.icon;
+            const isActive = currentPage === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setCurrentPage(item.id)}
+                className={`group relative flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-xs font-semibold transition-all duration-150 ${
+                  isActive
+                    ? "bg-indigo-600 text-white shadow-md shadow-indigo-950/50"
+                    : "text-slate-400 hover:bg-slate-900/80 hover:text-slate-100"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Icon
+                    className={`h-4 w-4 transition-transform duration-150 ${
+                      isActive
+                        ? "text-white"
+                        : "text-slate-400 group-hover:scale-110 group-hover:text-slate-200"
+                    }`}
+                  />
+                  <span>{item.label}</span>
+                </div>
+                {item.badge && (
+                  <span
+                    className={`rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
+                      isActive
+                        ? "bg-indigo-700/80 text-indigo-100"
+                        : "bg-slate-800 text-slate-400 group-hover:text-slate-300"
+                    }`}
+                  >
+                    {item.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </nav>
 
-        <div className="border-t border-slate-200 p-3">
+        {/* Sidebar Footer with Settings */}
+        <div className="border-t border-slate-800/80 p-3 space-y-2">
           <button
             onClick={() => setCurrentPage("settings")}
-            className={`w-full rounded-lg px-4 py-3 text-left text-sm ${
+            className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-semibold transition-all duration-150 ${
               currentPage === "settings"
-                ? "bg-slate-900 font-medium text-white"
-                : "hover:bg-slate-100 text-slate-700"
+                ? "bg-indigo-600 text-white shadow-md shadow-indigo-950/50"
+                : "text-slate-400 hover:bg-slate-900/80 hover:text-slate-100"
             }`}
           >
-            ⚙️ Settings
+            <IconSettings className="h-4 w-4" />
+            <span>Settings</span>
           </button>
+
+          <div className="rounded-xl border border-slate-800/60 bg-slate-900/40 px-3 py-2 text-[10px] text-slate-400 flex items-center justify-between">
+            <span className="font-medium text-slate-400">Register #01</span>
+            <span className="text-emerald-400 font-mono text-[9px] font-bold">ONLINE</span>
+          </div>
         </div>
       </aside>
 

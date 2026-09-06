@@ -266,7 +266,7 @@ function PurchasesPage({
           {tab === "purchases" && (
             <button
               onClick={() => setShowNewPurchase(true)}
-              className="rounded-lg bg-slate-900 px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-slate-800"
+              className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-indigo-950/20 hover:bg-indigo-500 active:scale-[0.98] transition-all"
             >
               + New Inward Bill
             </button>
@@ -285,7 +285,7 @@ function PurchasesPage({
                 });
                 setShowSupplierForm(true);
               }}
-              className="rounded-lg bg-slate-900 px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-slate-800"
+              className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-indigo-950/20 hover:bg-indigo-500 active:scale-[0.98] transition-all"
             >
               + Add Supplier
             </button>

@@ -88,9 +88,10 @@ function CustomerSelector({ customer, onChange }) {
     <div className="relative">
       <button
         onClick={() => setIsOpen((current) => !current)}
-        className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+        className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:border-slate-300 transition-all flex items-center gap-1.5"
       >
-        Change
+        <span>👤</span>
+        <span>{customer ? "Change" : "Add Customer"}</span>
       </button>
 
       {isOpen && (

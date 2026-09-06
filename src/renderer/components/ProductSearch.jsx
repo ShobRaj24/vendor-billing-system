@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { IconSearch, IconPlus } from "./Icons";
 
 function ProductSearch({
   search,
@@ -53,13 +54,13 @@ function ProductSearch({
   }, [filteredProducts, selectedCategory]);
 
   return (
-    <section className="flex min-w-0 flex-1 flex-col rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
+    <section className="flex min-w-0 flex-1 flex-col rounded-2xl border border-slate-200/80 bg-white shadow-xs overflow-hidden">
       {/* Search Header */}
-      <div className="border-b border-slate-200 p-3.5 space-y-3 bg-white">
+      <div className="border-b border-slate-100 p-3.5 space-y-3 bg-white">
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
-              🔍
+            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+              <IconSearch className="h-4 w-4" />
             </span>
             <input
               id="product-search-input"
@@ -74,7 +75,7 @@ function ProductSearch({
               }}
               type="text"
               placeholder="Search product by name, barcode, or SKU... (Enter to quick-add)"
-              className="w-full rounded-xl border border-slate-300 bg-slate-50/50 pl-9 pr-20 py-2 text-xs outline-none focus:border-slate-500 focus:bg-white transition-all font-medium"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50/60 pl-10 pr-20 py-2.5 text-xs outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 focus:bg-white transition-all font-medium text-slate-800 placeholder:text-slate-400"
             />
             {search ? (
               <button
@@ -92,15 +93,15 @@ function ProductSearch({
           </div>
 
           {/* View Mode Toggle */}
-          <div className="flex rounded-lg border border-slate-200 bg-slate-100 p-0.5 text-xs">
+          <div className="flex rounded-xl border border-slate-200/80 bg-slate-100/70 p-0.5 text-xs">
             <button
               type="button"
               onClick={() => handleViewModeChange("grid")}
               title="Grid / Tiles view"
-              className={`rounded-md px-2.5 py-1.5 transition-all flex items-center gap-1 text-[11px] ${
+              className={`rounded-lg px-2.5 py-1.5 transition-all flex items-center gap-1 text-[11px] ${
                 viewMode === "grid"
-                  ? "bg-white text-slate-900 font-semibold shadow-2xs"
-                  : "text-slate-500 hover:text-slate-800"
+                  ? "bg-white text-slate-900 font-bold shadow-2xs"
+                  : "text-slate-500 hover:text-slate-800 font-medium"
               }`}
             >
               <span>⊞</span>
@@ -110,10 +111,10 @@ function ProductSearch({
               type="button"
               onClick={() => handleViewModeChange("list")}
               title="List view"
-              className={`rounded-md px-2.5 py-1.5 transition-all flex items-center gap-1 text-[11px] ${
+              className={`rounded-lg px-2.5 py-1.5 transition-all flex items-center gap-1 text-[11px] ${
                 viewMode === "list"
-                  ? "bg-white text-slate-900 font-semibold shadow-2xs"
-                  : "text-slate-500 hover:text-slate-800"
+                  ? "bg-white text-slate-900 font-bold shadow-2xs"
+                  : "text-slate-500 hover:text-slate-800 font-medium"
               }`}
             >
               <span>☰</span>
@@ -134,14 +135,14 @@ function ProductSearch({
                   onClick={() => setSelectedCategory(cat.name)}
                   className={`shrink-0 rounded-lg px-2.5 py-1 text-[11px] transition-all flex items-center gap-1.5 ${
                     active
-                      ? "bg-slate-900 text-white font-semibold shadow-2xs"
-                      : "bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900"
+                      ? "bg-indigo-600 text-white font-bold shadow-sm shadow-indigo-900/20"
+                      : "bg-slate-100/80 text-slate-600 hover:bg-slate-200/80 hover:text-slate-900 border border-slate-200/50 font-medium"
                   }`}
                 >
                   <span>{cat.name}</span>
                   <span
                     className={`rounded-full px-1.5 py-0.2 text-[9px] ${
-                      active ? "bg-slate-700 text-slate-200" : "bg-slate-200 text-slate-600"
+                      active ? "bg-indigo-700 text-indigo-100" : "bg-slate-200 text-slate-600"
                     }`}
                   >
                     {cat.count}
@@ -186,27 +187,38 @@ function ProductSearch({
                   key={product.id}
                   type="button"
                   onClick={() => addProduct(product)}
-                  className="group relative flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-3 text-left shadow-2xs transition-all hover:-translate-y-0.5 hover:border-slate-400 hover:shadow-md active:translate-y-0 active:scale-[0.99]"
+                  className="group relative flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-3.5 text-left shadow-2xs transition-all duration-150 hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-md active:translate-y-0 active:scale-[0.99] overflow-hidden"
                 >
-                  {/* Top: Name & Category */}
+                  {/* Top: Name, Add button & Category */}
                   <div>
-                    <div className="flex items-start justify-between gap-1">
-                      <p className="font-semibold text-xs text-slate-900 line-clamp-2 leading-snug group-hover:text-slate-950">
+                    <div className="flex items-start justify-between gap-1.5">
+                      <p className="font-bold text-xs text-slate-900 line-clamp-2 leading-snug group-hover:text-indigo-600 transition-colors">
                         {product.name}
                       </p>
-                      <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
-                        {product.unit}
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-400 transition-colors group-hover:bg-indigo-600 group-hover:text-white shadow-2xs">
+                        <IconPlus className="h-3 w-3" />
                       </span>
                     </div>
 
-                    <div className="mt-1 flex items-center gap-1.5 text-[10px] text-slate-400">
-                      <span>{product.category || "General"}</span>
-                      {product.barcode && <span>• {product.barcode}</span>}
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px]">
+                      <span className="rounded-md bg-indigo-50/80 border border-indigo-100/60 px-1.5 py-0.2 text-[9px] font-semibold text-indigo-700">
+                        {product.category || "General"}
+                      </span>
+                      {product.unit && (
+                        <span className="rounded bg-slate-100 px-1 py-0.2 text-[9px] font-medium text-slate-500">
+                          {product.unit}
+                        </span>
+                      )}
+                      {product.barcode && (
+                        <span className="text-slate-400 font-mono text-[9px]">
+                          #{product.barcode}
+                        </span>
+                      )}
                     </div>
                   </div>
 
                   {/* Bottom: Stock Status & Price */}
-                  <div className="mt-3 flex items-end justify-between border-t border-slate-100 pt-2">
+                  <div className="mt-3 flex items-end justify-between border-t border-slate-100 pt-2.5">
                     <div>
                       {isInventoryEnabled ? (
                         isTracked ? (
@@ -222,18 +234,18 @@ function ProductSearch({
                             {isOut ? "Out of stock" : isLow ? `Low: ${stock}` : `Stock: ${stock}`}
                           </span>
                         ) : (
-                          <span className="text-[10px] text-slate-400">Unlimited</span>
+                          <span className="text-[10px] text-slate-400 font-medium">Unlimited</span>
                         )
                       ) : null}
                     </div>
 
                     <div className="text-right">
                       {product.mrp !== null && Number(product.mrp) > Number(product.sellingPrice) && (
-                        <p className="text-[9px] text-slate-400 line-through leading-none">
-                          MRP ₹{Number(product.mrp).toFixed(2)}
+                        <p className="text-[9px] font-medium text-slate-400 line-through leading-none">
+                          ₹{Number(product.mrp).toFixed(2)}
                         </p>
                       )}
-                      <p className="font-extrabold text-sm text-slate-900 leading-tight">
+                      <p className="font-black text-sm text-slate-900 leading-tight">
                         ₹{Number(product.sellingPrice).toFixed(2)}
                       </p>
                     </div>

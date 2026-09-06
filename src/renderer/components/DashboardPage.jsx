@@ -1,4 +1,12 @@
 import { useEffect, useState } from "react";
+import {
+  IconDashboard,
+  IconReceipt,
+  IconPurchases,
+  IconInvoices,
+  IconPackage,
+  IconReports,
+} from "./Icons";
 
 function DashboardPage({
   onNavigate,
@@ -54,55 +62,63 @@ function DashboardPage({
         <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <button
             onClick={() => onNavigate("billing")}
-            className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3.5 text-left shadow-xs transition-all hover:border-slate-300 hover:shadow-sm"
+            className="group flex items-center gap-3.5 rounded-2xl border border-slate-200/80 bg-white p-4 text-left shadow-2xs transition-all duration-150 hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-md active:scale-[0.99]"
           >
-            <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-900 text-lg text-white">
-              🧾
-            </span>
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 text-white shadow-md shadow-indigo-950/20 transition-transform duration-150 group-hover:scale-105">
+              <IconReceipt className="h-5 w-5" />
+            </div>
             <div>
-              <h4 className="text-xs font-bold text-slate-900">New Bill</h4>
-              <p className="text-[10px] text-slate-500">Start POS checkout</p>
+              <h4 className="text-xs font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                New Bill
+              </h4>
+              <p className="text-[10px] font-medium text-slate-400">Start POS checkout</p>
             </div>
           </button>
 
           {isInventoryEnabled ? (
             <button
               onClick={() => onNavigate("purchases")}
-              className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3.5 text-left shadow-xs transition-all hover:border-slate-300 hover:shadow-sm"
+              className="group flex items-center gap-3.5 rounded-2xl border border-slate-200/80 bg-white p-4 text-left shadow-2xs transition-all duration-150 hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md active:scale-[0.99]"
             >
-              <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600 text-lg text-white">
-                🛒
-              </span>
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-cyan-500 text-white shadow-md shadow-blue-950/20 transition-transform duration-150 group-hover:scale-105">
+                <IconPurchases className="h-5 w-5" />
+              </div>
               <div>
-                <h4 className="text-xs font-bold text-slate-900">Inward Stock</h4>
-                <p className="text-[10px] text-slate-500">Add purchase bill</p>
+                <h4 className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+                  Inward Stock
+                </h4>
+                <p className="text-[10px] font-medium text-slate-400">Add purchase bill</p>
               </div>
             </button>
           ) : (
             <button
               onClick={() => onNavigate("invoices")}
-              className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3.5 text-left shadow-xs transition-all hover:border-slate-300 hover:shadow-sm"
+              className="group flex items-center gap-3.5 rounded-2xl border border-slate-200/80 bg-white p-4 text-left shadow-2xs transition-all duration-150 hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md active:scale-[0.99]"
             >
-              <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600 text-lg text-white">
-                📚
-              </span>
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-cyan-500 text-white shadow-md shadow-blue-950/20 transition-transform duration-150 group-hover:scale-105">
+                <IconInvoices className="h-5 w-5" />
+              </div>
               <div>
-                <h4 className="text-xs font-bold text-slate-900">Invoices</h4>
-                <p className="text-[10px] text-slate-500">View bill history</p>
+                <h4 className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+                  Invoices
+                </h4>
+                <p className="text-[10px] font-medium text-slate-400">View bill history</p>
               </div>
             </button>
           )}
 
           <button
             onClick={() => onNavigate("products")}
-            className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3.5 text-left shadow-xs transition-all hover:border-slate-300 hover:shadow-sm"
+            className="group flex items-center gap-3.5 rounded-2xl border border-slate-200/80 bg-white p-4 text-left shadow-2xs transition-all duration-150 hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md active:scale-[0.99]"
           >
-            <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-600 text-lg text-white">
-              📦
-            </span>
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white shadow-md shadow-emerald-950/20 transition-transform duration-150 group-hover:scale-105">
+              <IconPackage className="h-5 w-5" />
+            </div>
             <div>
-              <h4 className="text-xs font-bold text-slate-900">Products</h4>
-              <p className="text-[10px] text-slate-500">
+              <h4 className="text-xs font-bold text-slate-900 group-hover:text-emerald-600 transition-colors">
+                Products
+              </h4>
+              <p className="text-[10px] font-medium text-slate-400">
                 {data?.totalProducts || 0} active items
               </p>
             </div>
@@ -110,14 +126,16 @@ function DashboardPage({
 
           <button
             onClick={() => onNavigate("reports")}
-            className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3.5 text-left shadow-xs transition-all hover:border-slate-300 hover:shadow-sm"
+            className="group flex items-center gap-3.5 rounded-2xl border border-slate-200/80 bg-white p-4 text-left shadow-2xs transition-all duration-150 hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-md active:scale-[0.99]"
           >
-            <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-600 text-lg text-white">
-              📊
-            </span>
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-amber-600 to-orange-500 text-white shadow-md shadow-amber-950/20 transition-transform duration-150 group-hover:scale-105">
+              <IconReports className="h-5 w-5" />
+            </div>
             <div>
-              <h4 className="text-xs font-bold text-slate-900">Reports</h4>
-              <p className="text-[10px] text-slate-500">Sales & exports</p>
+              <h4 className="text-xs font-bold text-slate-900 group-hover:text-amber-600 transition-colors">
+                Reports
+              </h4>
+              <p className="text-[10px] font-medium text-slate-400">Sales & exports</p>
             </div>
           </button>
         </section>
@@ -130,47 +148,84 @@ function DashboardPage({
               : "sm:grid-cols-3"
           }`}
         >
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs border-l-4 border-l-slate-900">
-            <p className="text-xs font-medium text-slate-500">Today's Total Sales</p>
-            <p className="mt-1.5 text-2xl font-bold text-slate-900">
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-2xs transition-all duration-150 hover:shadow-sm hover:border-slate-300">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-slate-500">Today's Total Sales</p>
+              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
+                <IconReceipt className="h-4 w-4" />
+              </span>
+            </div>
+            <p className="mt-2 text-2xl font-black text-slate-900 tracking-tight">
               ₹{todaySales.toFixed(2)}
             </p>
-            <p className="mt-0.5 text-[11px] text-slate-400">Net revenue today</p>
+            <p className="mt-1 flex items-center gap-1.5 text-[11px] font-medium text-emerald-600">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+              Net revenue today
+            </p>
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs border-l-4 border-l-blue-600">
-            <p className="text-xs font-medium text-slate-500">Today's Invoices</p>
-            <p className="mt-1.5 text-2xl font-bold text-slate-900">
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-2xs transition-all duration-150 hover:shadow-sm hover:border-slate-300">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-slate-500">Today's Invoices</p>
+              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100">
+                <IconInvoices className="h-4 w-4" />
+              </span>
+            </div>
+            <p className="mt-2 text-2xl font-black text-slate-900 tracking-tight">
               {todayInvoiceCount}
             </p>
-            <p className="mt-0.5 text-[11px] text-slate-400">Completed checkout bills</p>
+            <p className="mt-1 flex items-center gap-1.5 text-[11px] font-medium text-indigo-600">
+              <span className="h-1.5 w-1.5 rounded-full bg-indigo-500"></span>
+              Completed checkout bills
+            </p>
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs border-l-4 border-l-emerald-600">
-            <p className="text-xs font-medium text-slate-500">Total Catalog Products</p>
-            <p className="mt-1.5 text-2xl font-bold text-slate-900">
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-2xs transition-all duration-150 hover:shadow-sm hover:border-slate-300">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-slate-500">Total Catalog Products</p>
+              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50 text-blue-600 border border-blue-100">
+                <IconPackage className="h-4 w-4" />
+              </span>
+            </div>
+            <p className="mt-2 text-2xl font-black text-slate-900 tracking-tight">
               {totalProducts}
             </p>
-            <p className="mt-0.5 text-[11px] text-slate-400">Active items in store</p>
+            <p className="mt-1 flex items-center gap-1.5 text-[11px] font-medium text-blue-600">
+              <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
+              Active items in store
+            </p>
           </div>
 
           {isInventoryEnabled && (
             <div
-              className={`rounded-xl border bg-white p-5 shadow-xs border-l-4 ${
+              className={`rounded-2xl border p-5 shadow-2xs transition-all duration-150 hover:shadow-sm ${
                 lowStockCount > 0
-                  ? "border-l-red-500 border-red-200"
-                  : "border-l-slate-300 border-slate-200"
+                  ? "border-red-200 bg-red-50/30"
+                  : "border-slate-200/80 bg-white"
               }`}
             >
-              <p className="text-xs font-medium text-slate-500">Low Stock Alert</p>
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-slate-500">Low Stock Alert</p>
+                <span
+                  className={`flex h-8 w-8 items-center justify-center rounded-xl ${
+                    lowStockCount > 0
+                      ? "bg-red-100 text-red-600 border border-red-200"
+                      : "bg-slate-100 text-slate-500 border border-slate-200"
+                  }`}
+                >
+                  ⚠️
+                </span>
+              </div>
               <p
-                className={`mt-1.5 text-2xl font-bold ${
+                className={`mt-2 text-2xl font-black tracking-tight ${
                   lowStockCount > 0 ? "text-red-600" : "text-slate-900"
                 }`}
               >
                 {lowStockCount} items
               </p>
-              <p className="mt-0.5 text-[11px] text-slate-400">Urgent reorder needed</p>
+              <p className="mt-1 flex items-center gap-1.5 text-[11px] font-medium text-slate-400">
+                {lowStockCount > 0 ? "Urgent reorder needed" : "All stocks healthy"}
+              </p>
             </div>
           )}
         </section>
@@ -183,17 +238,19 @@ function DashboardPage({
         >
           {/* Low Stock Alerts */}
           {isInventoryEnabled && (
-            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-2xs">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3.5">
                 <div className="flex items-center gap-2">
-                  <span className="text-base">⚠️</span>
-                  <h3 className="font-semibold text-sm text-slate-900">
-                    Low Stock Warnings
+                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-50 text-amber-600 border border-amber-100">
+                    <IconPackage className="h-3.5 w-3.5" />
+                  </span>
+                  <h3 className="font-bold text-sm text-slate-900">
+                    Low Stock Watchlist
                   </h3>
                 </div>
                 <button
                   onClick={() => onNavigate("products")}
-                  className="text-xs font-medium text-slate-600 hover:text-slate-900"
+                  className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 transition-colors"
                 >
                   View all →
                 </button>
@@ -211,7 +268,7 @@ function DashboardPage({
                       className="flex items-center justify-between py-2.5"
                     >
                       <div>
-                        <p className="font-medium text-slate-900">{item.name}</p>
+                        <p className="font-semibold text-slate-900">{item.name}</p>
                         <p className="text-[10px] text-slate-400">
                           {item.category || "General"} • Alert at {item.lowStockAlert} {item.unit}
                         </p>
@@ -221,8 +278,8 @@ function DashboardPage({
                         <span
                           className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
                             item.stockQuantity <= 0
-                              ? "bg-red-100 text-red-700"
-                              : "bg-amber-100 text-amber-800"
+                              ? "bg-red-50 text-red-700 border border-red-200"
+                              : "bg-amber-50 text-amber-800 border border-amber-200"
                           }`}
                         >
                           {item.stockQuantity <= 0
@@ -238,7 +295,7 @@ function DashboardPage({
                               onNavigate("purchases");
                             }
                           }}
-                          className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-100 transition-colors"
+                          className="rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
                         >
                           + Inward
                         </button>
@@ -251,17 +308,19 @@ function DashboardPage({
           )}
 
           {/* Recent Invoices */}
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-2xs">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3.5">
               <div className="flex items-center gap-2">
-                <span className="text-base">🕒</span>
-                <h3 className="font-semibold text-sm text-slate-900">
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-100">
+                  <IconReceipt className="h-3.5 w-3.5" />
+                </span>
+                <h3 className="font-bold text-sm text-slate-900">
                   Recent Bills
                 </h3>
               </div>
               <button
                 onClick={() => onNavigate("invoices")}
-                className="text-xs font-medium text-slate-600 hover:text-slate-900"
+                className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 transition-colors"
               >
                 All invoices →
               </button>
@@ -277,25 +336,30 @@ function DashboardPage({
                   <div
                     key={inv.id}
                     onClick={() => onOpenInvoice && onOpenInvoice(inv)}
-                    className="flex cursor-pointer items-center justify-between py-2.5 hover:bg-slate-50/80 rounded-lg px-2 transition-colors"
+                    className="flex cursor-pointer items-center justify-between py-3 hover:bg-slate-50/80 rounded-xl px-2.5 transition-all duration-150 group"
                   >
-                    <div>
-                      <p className="font-semibold text-xs text-slate-900">
-                        {inv.customerName || "Walk-in Customer"}
-                      </p>
-                      <p className="mt-0.5 text-[11px] text-slate-500">
-                        <span className="font-mono text-slate-700 font-medium">
-                          {inv.invoiceNumber}
-                        </span>
-                        {" • "}
-                        {new Date(inv.createdAt).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </p>
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 font-bold text-[11px] text-slate-600 uppercase group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
+                        {(inv.customerName || "W")[0]}
+                      </div>
+                      <div>
+                        <p className="font-bold text-xs text-slate-900 group-hover:text-indigo-600 transition-colors">
+                          {inv.customerName || "Walk-in Customer"}
+                        </p>
+                        <p className="mt-0.5 text-[11px] text-slate-400">
+                          <span className="font-mono text-slate-600 font-medium">
+                            {inv.invoiceNumber}
+                          </span>
+                          {" • "}
+                          {new Date(inv.createdAt).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                      </div>
                     </div>
 
-                    <span className="font-bold text-sm text-slate-900">
+                    <span className="font-black text-sm text-slate-900 group-hover:text-indigo-600 transition-colors">
                       ₹{inv.finalAmount.toFixed(2)}
                     </span>
                   </div>

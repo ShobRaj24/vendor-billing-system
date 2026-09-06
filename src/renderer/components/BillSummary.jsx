@@ -52,20 +52,23 @@ function BillSummary({
       </div>
 
       {/* High-Impact Total Payable Banner */}
-      <div className="flex items-center justify-between rounded-xl bg-slate-950 px-4 py-3 text-white shadow-xs">
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-            Total Payable
-          </p>
-          <p className="text-[11px] text-slate-400">
-            {totalItemsCount} {totalItemsCount === 1 ? "unit" : "units"}
-          </p>
-        </div>
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 p-4 text-white shadow-sm border border-slate-800/60">
+        <div className="pointer-events-none absolute -right-6 -bottom-6 h-24 w-24 rounded-full bg-emerald-500/10 blur-xl"></div>
+        <div className="flex items-center justify-between relative z-10">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Total Payable
+            </p>
+            <p className="mt-0.5 text-[11px] font-medium text-slate-400">
+              {totalItemsCount} {totalItemsCount === 1 ? "unit" : "units"}
+            </p>
+          </div>
 
-        <div className="text-right">
-          <p className="text-2xl font-black tracking-tight text-emerald-400">
-            ₹{finalAmount.toFixed(2)}
-          </p>
+          <div className="text-right">
+            <p className="text-2xl font-black tracking-tight text-emerald-400 drop-shadow-xs">
+              ₹{finalAmount.toFixed(2)}
+            </p>
+          </div>
         </div>
       </div>
 
@@ -76,10 +79,10 @@ function BillSummary({
           onClick={onHoldBill}
           disabled={!hasItems}
           title="Place this bill on hold (F4)"
-          className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-xs font-bold text-slate-700 shadow-2xs transition-all hover:bg-slate-50 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-xs font-bold text-slate-700 shadow-2xs transition-all hover:bg-slate-50 hover:border-slate-300 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
         >
           <span>⏸ Hold</span>
-          <span className="rounded bg-slate-100 px-1 py-0.2 text-[9px] font-mono text-slate-400">
+          <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-mono text-slate-500">
             F4
           </span>
         </button>
@@ -89,10 +92,10 @@ function BillSummary({
           onClick={onSaveBill}
           disabled={!hasItems}
           title="Save and process invoice (F8 or Ctrl+Enter)"
-          className="flex items-center justify-center gap-1.5 rounded-xl bg-slate-900 px-3 py-2.5 text-xs font-bold text-white shadow-xs transition-all hover:bg-slate-800 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 px-3 py-3 text-xs font-bold text-white shadow-md shadow-emerald-950/20 transition-all hover:from-emerald-500 hover:to-emerald-400 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:from-emerald-600 disabled:hover:to-emerald-500"
         >
           <span>💾 Save Bill</span>
-          <span className="rounded bg-slate-800 px-1 py-0.2 text-[9px] font-mono text-slate-300">
+          <span className="rounded bg-emerald-700/80 px-1.5 py-0.5 text-[9px] font-mono text-emerald-100">
             F8
           </span>
         </button>
