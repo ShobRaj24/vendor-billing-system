@@ -126,7 +126,11 @@ export function useBilling() {
 
   const totalMrp = useMemo(() => {
     return billItems.reduce((total, item) => {
-      return total + Number(item.mrp || 0) * item.quantity;
+      const effectiveMrp =
+        item.mrp !== null && item.mrp !== undefined && Number(item.mrp) >= item.sellingPrice
+          ? Number(item.mrp)
+          : item.sellingPrice;
+      return total + effectiveMrp * item.quantity;
     }, 0);
   }, [billItems]);
 
@@ -137,7 +141,7 @@ export function useBilling() {
   }, [billItems]);
 
   const productDiscount = useMemo(() => {
-    return totalMrp - subtotal;
+    return Math.max(0, totalMrp - subtotal);
   }, [totalMrp, subtotal]);
 
   async function saveBill(customer) {

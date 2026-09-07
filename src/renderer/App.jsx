@@ -387,7 +387,13 @@ function App() {
 
   useEffect(() => {
     function handleKeyDown(e) {
-      if (currentPage !== "billing" || savedInvoice || showHeldBillsModal) {
+      if (
+        currentPage !== "billing" ||
+        savedInvoice ||
+        showHeldBillsModal ||
+        showAddProduct ||
+        showOnboarding
+      ) {
         return;
       }
 
@@ -413,7 +419,17 @@ function App() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [currentPage, savedInvoice, showHeldBillsModal, billItems, selectedCustomer, additionalDiscount, subtotal]);
+  }, [
+    currentPage,
+    savedInvoice,
+    showHeldBillsModal,
+    showAddProduct,
+    showOnboarding,
+    billItems,
+    selectedCustomer,
+    additionalDiscount,
+    subtotal,
+  ]);
 
   return (
     <div className="flex h-screen bg-slate-100 text-slate-900">

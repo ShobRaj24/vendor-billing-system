@@ -17,6 +17,7 @@ function ProductSearch({
     }
   });
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const [notFoundNotice, setNotFoundNotice] = useState("");
 
   function handleViewModeChange(mode) {
     setViewMode(mode);
@@ -57,6 +58,15 @@ function ProductSearch({
     <section className="flex min-w-0 flex-1 flex-col rounded-2xl border border-slate-200/80 bg-white shadow-xs overflow-hidden">
       {/* Search Header */}
       <div className="border-b border-slate-100 p-3.5 space-y-3 bg-white">
+        {notFoundNotice && (
+          <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-800">
+            <span className="flex items-center gap-1.5 font-medium">
+              <span>⚠️</span>
+              <span>{notFoundNotice}</span>
+            </span>
+            <span className="text-[10px] text-amber-600">Scan or search another item</span>
+          </div>
+        )}
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
             <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
@@ -68,9 +78,15 @@ function ProductSearch({
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               onKeyDown={(event) => {
-                if (event.key === "Enter" && displayedProducts.length > 0) {
-                  addProduct(displayedProducts[0]);
-                  setSearch("");
+                if (event.key === "Enter") {
+                  if (displayedProducts.length > 0) {
+                    addProduct(displayedProducts[0]);
+                    setSearch("");
+                    setNotFoundNotice("");
+                  } else if (search.trim()) {
+                    setNotFoundNotice(`No product matches "${search.trim()}"`);
+                    setTimeout(() => setNotFoundNotice(""), 3500);
+                  }
                 }
               }}
               type="text"

@@ -282,21 +282,24 @@ function validateInvoice(invoice) {
     "Additional discount",
   );
   const finalAmount = getNonNegativeNumber(invoice.finalAmount, "Final amount");
-  const calculatedTotalMrp = items.reduce(
-    (total, item) => total + (item.mrp || 0) * item.quantity,
-    0,
-  );
+  const calculatedTotalMrp = items.reduce((total, item) => {
+    const effectiveMrp =
+      item.mrp !== null && item.mrp !== undefined && item.mrp >= item.sellingPrice
+        ? item.mrp
+        : item.sellingPrice;
+    return total + effectiveMrp * item.quantity;
+  }, 0);
   const subtotal = items.reduce((total, item) => total + item.lineTotal, 0);
 
-  if (!Number.isFinite(productDiscount)) {
-    throw new Error("Product discount must be a valid amount.");
+  if (!Number.isFinite(productDiscount) || productDiscount < 0) {
+    throw new Error("Product discount must be a valid non-negative amount.");
   }
 
   if (!numbersMatch(totalMrp, calculatedTotalMrp)) {
     throw new Error("Total MRP does not match the invoice items.");
   }
 
-  if (!numbersMatch(productDiscount, totalMrp - subtotal)) {
+  if (!numbersMatch(productDiscount, Math.max(0, totalMrp - subtotal))) {
     throw new Error("Product discount does not match the invoice items.");
   }
 
@@ -837,7 +840,8 @@ ipcMain.handle("purchases:create", async (_event, purchase) => {
   `);
 
   const updateProductStock = sqliteDb.prepare(`
-    UPDATE Product SET stockQuantity = COALESCE(stockQuantity, 0) + ?, updatedAt = datetime('now') WHERE id = ?
+    UPDATE Product SET stockQuantity = COALESCE(stockQuantity, 0) + ?, updatedAt = datetime('now')
+    WHERE id = ? AND trackStock = 1
   `);
 
   const transaction = sqliteDb.transaction(() => {
@@ -851,6 +855,7 @@ ipcMain.handle("purchases:create", async (_event, purchase) => {
     );
     const purchaseId = info.lastInsertRowid;
 
+    const currentSettings = readSettings();
     for (const item of purchase.items) {
       const qty = Number(item.quantity);
       const cost = Number(item.costPrice);
@@ -864,7 +869,13 @@ ipcMain.handle("purchases:create", async (_event, purchase) => {
         cost,
         lineTotal,
       );
-      updateProductStock.run(qty, item.productId);
+      if (currentSettings.enableInventory) {
+        try {
+          updateProductStock.run(qty, item.productId);
+        } catch (err) {
+          console.warn(`Could not update stock for purchase item #${item.productId}:`, err);
+        }
+      }
     }
     return purchaseId;
   });
@@ -925,7 +936,8 @@ ipcMain.handle("returns:create", async (_event, returnData) => {
   `);
 
   const restockProduct = sqliteDb.prepare(`
-    UPDATE Product SET stockQuantity = COALESCE(stockQuantity, 0) + ?, updatedAt = datetime('now') WHERE id = ?
+    UPDATE Product SET stockQuantity = COALESCE(stockQuantity, 0) + ?, updatedAt = datetime('now')
+    WHERE id = ? AND trackStock = 1
   `);
 
   const transaction = sqliteDb.transaction(() => {
@@ -939,6 +951,7 @@ ipcMain.handle("returns:create", async (_event, returnData) => {
     );
     const returnId = info.lastInsertRowid;
 
+    const currentSettings = readSettings();
     for (const item of returnData.items) {
       const qty = Number(item.quantity);
       const price = Number(item.refundPrice);
@@ -952,7 +965,13 @@ ipcMain.handle("returns:create", async (_event, returnData) => {
         price,
         lineTotal,
       );
-      restockProduct.run(qty, item.productId);
+      if (currentSettings.enableInventory) {
+        try {
+          restockProduct.run(qty, item.productId);
+        } catch (err) {
+          console.warn(`Could not restock return item #${item.productId}:`, err);
+        }
+      }
     }
     return returnId;
   });
