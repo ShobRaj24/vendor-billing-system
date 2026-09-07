@@ -72,6 +72,7 @@ function App() {
   // Settings state
   const [settings, setSettings] = useState(null);
   const isInventoryEnabled = Boolean(settings?.enableInventory);
+  const showOnboarding = Boolean(settings !== null && settings?.setupCompleted !== true);
 
   // Held bills state
   const [heldBills, setHeldBills] = useState(() => {
@@ -754,7 +755,7 @@ function App() {
 
       {/* First-Time Welcome & Mode Selection Modal */}
       <OnboardingModal
-        isOpen={settings !== null && settings.setupCompleted !== true}
+        isOpen={showOnboarding}
         onSelectMode={handleSelectOnboardingMode}
       />
     </div>
