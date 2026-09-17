@@ -1,7 +1,7 @@
 import { createRequire } from "module";
 
 const require = createRequire(import.meta.url);
-const { PrismaClient } = require("@prisma/client");
+const { PrismaClient } = require("../generated/prisma/index.js");
 const { PrismaBetterSqlite3 } = require("@prisma/adapter-better-sqlite3");
 
 export function createPrismaClient(databasePath) {
