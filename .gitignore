@@ -12,6 +12,9 @@ node_modules
 # Vite build output
 dist/
 
+# Electron distribution output
+release/
+
 # AI/development tool configuration
 .agents/
 .claude/

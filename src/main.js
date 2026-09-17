@@ -23,19 +23,65 @@ function hasColumn(database, tableName, columnName) {
   return columns.some((col) => col.name === columnName);
 }
 
-function applyCustomerMigration(database) {
-  if (hasTable(database, "Customer")) {
-    return;
-  }
+function applyBaseSchema(database) {
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS "Product" (
+      "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+      "name" TEXT NOT NULL,
+      "sku" TEXT,
+      "barcode" TEXT,
+      "category" TEXT,
+      "unit" TEXT NOT NULL DEFAULT 'Piece',
+      "mrp" DECIMAL,
+      "sellingPrice" DECIMAL NOT NULL,
+      "stockQuantity" DECIMAL NOT NULL DEFAULT 0,
+      "lowStockAlert" DECIMAL DEFAULT 5,
+      "trackStock" BOOLEAN NOT NULL DEFAULT 1,
+      "isActive" BOOLEAN NOT NULL DEFAULT 1,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS "Product_sku_key" ON "Product"("sku");
+    CREATE UNIQUE INDEX IF NOT EXISTS "Product_barcode_key" ON "Product"("barcode");
 
-  const migrationPath = path.join(
-    __dirname,
-    "../prisma/migrations/20260901075959_add_customers/migration.sql",
-  );
+    CREATE TABLE IF NOT EXISTS "Customer" (
+      "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+      "name" TEXT NOT NULL,
+      "phone" TEXT,
+      "address" TEXT,
+      "isActive" BOOLEAN NOT NULL DEFAULT 1,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS "Customer_phone_key" ON "Customer"("phone");
 
-  if (fs.existsSync(migrationPath)) {
-    database.exec(fs.readFileSync(migrationPath, "utf8"));
-  }
+    CREATE TABLE IF NOT EXISTS "Invoice" (
+      "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+      "invoiceNumber" TEXT NOT NULL UNIQUE,
+      "customerId" INTEGER,
+      "customerName" TEXT NOT NULL DEFAULT 'Walk-in Customer',
+      "totalMrp" DECIMAL NOT NULL,
+      "productDiscount" DECIMAL NOT NULL,
+      "additionalDiscount" DECIMAL NOT NULL,
+      "finalAmount" DECIMAL NOT NULL,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "Invoice_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "Customer" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS "InvoiceItem" (
+      "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+      "invoiceId" INTEGER NOT NULL,
+      "productId" INTEGER NOT NULL,
+      "productName" TEXT NOT NULL,
+      "unit" TEXT NOT NULL DEFAULT 'Piece',
+      "quantity" DECIMAL NOT NULL,
+      "mrp" DECIMAL,
+      "sellingPrice" DECIMAL NOT NULL,
+      "lineTotal" DECIMAL NOT NULL,
+      CONSTRAINT "InvoiceItem_invoiceId_fkey" FOREIGN KEY ("invoiceId") REFERENCES "Invoice" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+      CONSTRAINT "InvoiceItem_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+    );
+  `);
 }
 
 function applyInventoryColumnsMigration(database) {
@@ -145,7 +191,7 @@ function applySalesReturnsMigration(database) {
 function applyAllMigrations(databasePath) {
   const database = new Database(databasePath);
   try {
-    applyCustomerMigration(database);
+    applyBaseSchema(database);
     applyInventoryColumnsMigration(database);
     applyPurchasesMigration(database);
     applySalesReturnsMigration(database);
@@ -448,9 +494,12 @@ function createSalesReport(invoices) {
 }
 
 function createWindow() {
+  const iconPath = path.join(__dirname, "../build/icon.png");
   const win = new BrowserWindow({
     width: 1280,
     height: 850,
+    title: "Vendor Billing & POS",
+    icon: fs.existsSync(iconPath) ? iconPath : undefined,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,

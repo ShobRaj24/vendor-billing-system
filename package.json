@@ -5,16 +5,20 @@
   "main": "src/main.js",
   "scripts": {
     "build": "vite build",
-    "start": "npm run build && electron ."
+    "start": "npm run build && electron .",
+    "dist": "npm run build && electron-builder --win",
+    "dist:portable": "npm run build && electron-builder --win portable",
+    "dist:dir": "npm run build && electron-builder --dir"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "Desktop Retail POS & Billing System",
   "devDependencies": {
     "@electron/rebuild": "^4.2.0",
     "@vitejs/plugin-react": "^6.0.5",
     "electron": "^43.4.0",
+    "electron-builder": "^26.15.3",
     "vite": "^8.2.1"
   },
   "dependencies": {
@@ -26,5 +30,50 @@
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "tailwindcss": "^4.3.3"
+  },
+  "build": {
+    "appId": "com.vendorbilling.pos",
+    "productName": "Vendor Billing & POS",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "src/**/*",
+      "prisma/**/*",
+      "node_modules/.prisma/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "asarUnpack": [
+      "**/node_modules/better-sqlite3/**/*",
+      "**/node_modules/@prisma/**/*",
+      "**/node_modules/.prisma/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Vendor Billing POS"
+    }
   }
 }
